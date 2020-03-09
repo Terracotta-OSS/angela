@@ -66,10 +66,12 @@ public class TerracottaCommandLineEnvironment {
     requireNonNull(javaVendors);
     requireNonNull(javaOpts);
 
-    javaVendors.stream()
-        .filter(((Predicate<String>) vendor -> vendor == null || vendor.isEmpty()).negate())
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("None of the java vendors can be null or empty"));
+    if(!javaVendors.isEmpty()) {
+      javaVendors.stream()
+          .filter(((Predicate<String>) vendor -> vendor == null || vendor.isEmpty()).negate())
+          .findFirst()
+          .orElseThrow(() -> new IllegalArgumentException("None of the java vendors can be null or empty"));
+    }
     javaOpts.stream()
         .filter(((Predicate<String>) opt -> opt == null || opt.isEmpty()).negate())
         .findFirst()
