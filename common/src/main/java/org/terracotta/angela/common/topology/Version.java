@@ -35,7 +35,24 @@ public class Version implements Comparable<Version> {
     return new Version(version);
   }
 
+  public static Version rawVersion(String version) {
+    return new Version(version, false);
+  }
+
+  private Version(int major, int minor, int revision, int build_major, int build_minor, boolean snapshot) {
+    this.major = major;
+    this.minor = minor;
+    this.revision = revision;
+    this.build_major = build_major;
+    this.build_minor = build_minor;
+    this.snapshot = snapshot;
+  }
+
   public Version(String version) {
+    this(version, true);
+  }
+
+  private Version(String version, boolean validate) {
     requireNonNull(version);
 
     String versionToSplit = version;
@@ -48,12 +65,12 @@ public class Version implements Comparable<Version> {
 
     String[] split = versionToSplit.split("\\.");
     if (split.length == 2 || split.length == 3 || split.length == 5) {
-      this.major = parseMajorVersion(split[0]);
-      this.minor = parseMinorVersion(split[1]);
+      this.major = validate ? validateMajorVersion(parse(split[0])) : parse(split[0]);
+      this.minor = validate ? validateMinorVersion(parse(split[1])) : parse(split[1]);
       if (split.length == 2) {
         this.revision = -1;
       } else {
-        this.revision = parseRevisionVersion(split[2]);
+        this.revision = validate ? validateRevisionVersion(parse(split[2])) : parse(split[2]);
       }
 
       if (split.length == 5) {
@@ -68,27 +85,24 @@ public class Version implements Comparable<Version> {
     }
   }
 
-  private int parseMajorVersion(String input) {
-    int majorVersion = parse(input);
+  private int validateMajorVersion(int majorVersion) {
     List<Integer> acceptableVersions = Arrays.asList(3, 4, 10);
     if (!acceptableVersions.contains(majorVersion)) {
-      throw new IllegalArgumentException("Expected major version to be one of: " + acceptableVersions + ", but found: " + input);
+      throw new IllegalArgumentException("Expected major version to be one of: " + acceptableVersions + ", but found: " + majorVersion);
     }
     return majorVersion;
   }
 
-  private int parseMinorVersion(String input) {
-    int minorVersion = parse(input);
+  private int validateMinorVersion(int minorVersion) {
     if (minorVersion < 0) {
-      throw new IllegalArgumentException("Expected minor version to be a positive number, but found: " + input);
+      throw new IllegalArgumentException("Expected minor version to be a positive number, but found: " + minorVersion);
     }
     return minorVersion;
   }
 
-  private int parseRevisionVersion(String input) {
-    int revision = parse(input);
+  private int validateRevisionVersion(int revision) {
     if (revision < 0) {
-      throw new IllegalArgumentException("Expected revision to be a positive number, but found: " + input);
+      throw new IllegalArgumentException("Expected revision to be a positive number, but found: " + revision);
     }
     return revision;
   }
