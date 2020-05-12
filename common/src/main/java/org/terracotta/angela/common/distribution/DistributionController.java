@@ -68,7 +68,7 @@ public abstract class DistributionController {
 
   protected Map<String, String> buildEnv(TerracottaCommandLineEnvironment tcEnv) {
     Map<String, String> env = new HashMap<>();
-    String javaHome = javaLocationResolver.resolveJavaLocation(tcEnv).getHome();
+    String javaHome = tcEnv.getJavaHome().orElse(javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
     env.put("JAVA_HOME", javaHome);
     LOGGER.info(" JAVA_HOME = {}", javaHome);
 
@@ -87,7 +87,7 @@ public abstract class DistributionController {
       return new ToolExecutionResult(-1, Collections.singletonList("PID of java process could not be figured out"));
     }
 
-    String javaHome = javaLocationResolver.resolveJavaLocation(tcEnv).getHome();
+    String javaHome = tcEnv.getJavaHome().orElse(javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {

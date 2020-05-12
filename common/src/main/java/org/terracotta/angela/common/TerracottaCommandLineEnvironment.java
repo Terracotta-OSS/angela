@@ -24,6 +24,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
+import java.util.Optional;
 import static org.terracotta.angela.common.AngelaProperties.JAVA_OPTS;
 import static org.terracotta.angela.common.AngelaProperties.JAVA_VENDOR;
 import static org.terracotta.angela.common.AngelaProperties.JAVA_VERSION;
@@ -40,12 +41,13 @@ public class TerracottaCommandLineEnvironment {
     Set<String> vendors = JAVA_VENDOR.getValue().equals("") ? new LinkedHashSet<>() : singleton(JAVA_VENDOR.getValue());
     // Important - Use a LinkedHashSet to preserve the order of opts, as some opts are position-sensitive
     Set<String> opts = JAVA_OPTS.getValue().equals("") ? new LinkedHashSet<>() : singleton(JAVA_OPTS.getValue());
-    DEFAULT = new TerracottaCommandLineEnvironment(version, vendors, opts);
+    DEFAULT = new TerracottaCommandLineEnvironment(null, version, vendors, opts);
   }
 
-  private String javaVersion;
-  private Set<String> javaVendors;
-  private Set<String> javaOpts;
+  private final Optional<String> javaHome;
+  private final String javaVersion;
+  private final Set<String> javaVendors;
+  private final Set<String> javaOpts;
 
   /**
    * Create a new instance that contains whatever is necessary to build a JVM command line, minus classpath and main class.
@@ -55,8 +57,9 @@ public class TerracottaCommandLineEnvironment {
    * @param javaOpts    some command line arguments to give to the JVM, like -Xmx2G, -XX:Whatever or -Dsomething=abc.
    *                    Can be empty if no JVM argument is needed.
    */
-  private TerracottaCommandLineEnvironment(String javaVersion, Set<String> javaVendors, Set<String> javaOpts) {
+  private TerracottaCommandLineEnvironment(Optional<String> javaHome, String javaVersion, Set<String> javaVendors, Set<String> javaOpts) {
     validate(javaVersion, javaVendors, javaOpts);
+    this.javaHome = javaHome;
     this.javaVersion = javaVersion;
     this.javaVendors = unmodifiableSet(new LinkedHashSet<>(javaVendors));
     this.javaOpts = unmodifiableSet(new LinkedHashSet<>(javaOpts));
@@ -77,15 +80,23 @@ public class TerracottaCommandLineEnvironment {
   }
 
   public TerracottaCommandLineEnvironment withJavaVersion(String javaVersion) {
-    return new TerracottaCommandLineEnvironment(javaVersion, javaVendors, javaOpts);
+    return new TerracottaCommandLineEnvironment(javaHome, javaVersion, javaVendors, javaOpts);
   }
 
   public TerracottaCommandLineEnvironment withJavaVendors(String... javaVendors) {
-    return new TerracottaCommandLineEnvironment(javaVersion, new LinkedHashSet<>(asList(javaVendors)), javaOpts);
+    return new TerracottaCommandLineEnvironment(javaHome, javaVersion, new LinkedHashSet<>(asList(javaVendors)), javaOpts);
   }
 
   public TerracottaCommandLineEnvironment withJavaOpts(String... javaOpts) {
-    return new TerracottaCommandLineEnvironment(javaVersion, javaVendors, new LinkedHashSet<>(asList(javaOpts)));
+    return new TerracottaCommandLineEnvironment(javaHome, javaVersion, javaVendors, new LinkedHashSet<>(asList(javaOpts)));
+  }
+
+  public TerracottaCommandLineEnvironment withJavaHome(String jdkHome) {
+    return new TerracottaCommandLineEnvironment(Optional.of(jdkHome), javaVersion, javaVendors, javaOpts);
+  }
+
+  public Optional<String> getJavaHome() {
+    return javaHome;
   }
 
   public String getJavaVersion() {
