@@ -41,7 +41,7 @@ public class TerracottaCommandLineEnvironment {
     Set<String> vendors = JAVA_VENDOR.getValue().equals("") ? new LinkedHashSet<>() : singleton(JAVA_VENDOR.getValue());
     // Important - Use a LinkedHashSet to preserve the order of opts, as some opts are position-sensitive
     Set<String> opts = JAVA_OPTS.getValue().equals("") ? new LinkedHashSet<>() : singleton(JAVA_OPTS.getValue());
-    DEFAULT = new TerracottaCommandLineEnvironment(null, version, vendors, opts);
+    DEFAULT = new TerracottaCommandLineEnvironment(Optional.empty(), version, vendors, opts);
   }
 
   private final Optional<String> javaHome;

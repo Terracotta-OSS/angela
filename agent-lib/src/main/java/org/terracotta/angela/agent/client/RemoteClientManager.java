@@ -69,7 +69,7 @@ public class RemoteClientManager {
   }
 
   public ToolExecutionResult jcmd(int javaPid, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
-    String javaHome = javaLocationResolver.resolveJavaLocation(tcEnv).getHome();
+    String javaHome = tcEnv.getJavaHome().orElse(javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {
@@ -93,7 +93,7 @@ public class RemoteClientManager {
 
   public int spawnClient(InstanceId instanceId, TerracottaCommandLineEnvironment tcEnv, Collection<String> joinedNodes, int ignitePort, PortAllocator portAllocator) {
     try {
-      String javaHome = javaLocationResolver.resolveJavaLocation(tcEnv).getHome();
+      String javaHome = tcEnv.getJavaHome().orElse(javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
 
       final AtomicBoolean started = new AtomicBoolean(false);
       List<String> cmdLine = new ArrayList<>();

@@ -136,7 +136,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   private Number findWithJcmdJavaPidOf(String serverUuid, TerracottaCommandLineEnvironment tcEnv) {
-    String javaHome = javaLocationResolver.resolveJavaLocation(tcEnv).getHome();
+    String javaHome = tcEnv.getJavaHome().orElse(javaLocationResolver.resolveJavaLocation(tcEnv).getHome());
 
     List<String> cmdLine = new ArrayList<>();
     if (OS.INSTANCE.isWindows()) {
