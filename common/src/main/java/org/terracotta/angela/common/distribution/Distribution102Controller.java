@@ -120,7 +120,7 @@ public class Distribution102Controller extends DistributionController {
         .command(createTsaCommand(terracottaServer.getServerSymbolicName(), terracottaServer.getId(), topology, proxiedPorts, kitDir, workingDir, startUpArgs))
         .directory(workingDir)
         .environment(env)
-        .redirectError(System.err)
+        .redirectErrorStream(true)
         .redirectOutput(serverLogOutputStream), stateRef, TerracottaServerState.STOPPED);
 
     while (javaPid.get() == -1 && watchedProcess.isAlive()) {
@@ -335,7 +335,7 @@ public class Distribution102Controller extends DistributionController {
         .command(startTmsCommand(kitDir))
         .directory(workingDir)
         .environment(env)
-        .redirectError(System.err)
+        .redirectErrorStream(true)
         .redirectOutput(outputStream), stateRef, TerracottaManagementServerState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaManagementServerState.STOPPED) && watchedProcess.isAlive()) {

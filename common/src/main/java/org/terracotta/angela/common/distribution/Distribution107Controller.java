@@ -111,7 +111,7 @@ public class Distribution107Controller extends DistributionController {
             .command(createTsaCommand(terracottaServer, kitDir, startUpArgs))
             .directory(workingDir)
             .environment(env)
-            .redirectError(System.err)
+            .redirectErrorStream(true)
             .redirectOutput(serverLogOutputStream),
         stateRef,
         TerracottaServerState.STOPPED);
@@ -152,7 +152,7 @@ public class Distribution107Controller extends DistributionController {
         .command(startTmsCommand(kitDir))
         .directory(workingDir)
         .environment(env)
-        .redirectError(System.err)
+        .redirectErrorStream(true)
         .redirectOutput(outputStream), stateRef, TerracottaManagementServerState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaManagementServerState.STOPPED) && watchedProcess.isAlive()) {
@@ -204,7 +204,7 @@ public class Distribution107Controller extends DistributionController {
         .command(startVoterCommand(kitDir, terracottaVoter))
         .directory(workingDir)
         .environment(env)
-        .redirectError(System.err)
+        .redirectErrorStream(true)
         .redirectOutput(outputStream), stateRef, TerracottaVoterState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaVoterState.STOPPED) && watchedProcess.isAlive()) {

@@ -125,7 +125,7 @@ public class Distribution43Controller extends DistributionController {
             .command(createTsaCommand(terracottaServer.getServerSymbolicName(), terracottaServer.getId(), topology.getConfigurationManager(), proxiedPorts, kitDir, workingDir, startUpArgs))
             .directory(workingDir)
             .environment(env)
-            .redirectError(System.err)
+            .redirectErrorStream(true)
             .redirectOutput(serverLogOutputStream),
         stateRef,
         STOPPED);
