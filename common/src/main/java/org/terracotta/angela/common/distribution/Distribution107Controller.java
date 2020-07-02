@@ -56,8 +56,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static java.io.File.separator;
+import java.io.IOException;
 import static java.lang.Integer.parseInt;
 import static java.lang.String.join;
+import java.nio.file.Files;
 import static java.util.regex.Pattern.compile;
 import static org.terracotta.angela.common.AngelaProperties.TMS_FULL_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.TSA_FULL_LOGGING;
@@ -73,10 +75,21 @@ public class Distribution107Controller extends DistributionController {
     super(distribution);
   }
 
+  private void installCustomLogging(File workingDir) {
+      try {
+        if (!Files.exists(workingDir.toPath().resolve("logback-test.xml"))) {
+          Files.copy(this.getClass().getResourceAsStream("/tc-logback.xml"), workingDir.toPath().resolve("logback-test.xml"));
+        }
+      } catch (IOException ioe) {
+        LOGGER.warn("unable to install custom logging configuration", ioe);
+      }
+  }
+
   @Override
   public TerracottaServerInstanceProcess createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                                    Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
                                                    TerracottaCommandLineEnvironment tcEnv, List<String> startUpArgs) {
+    installCustomLogging(workingDir);
     Map<String, String> env = buildEnv(tcEnv);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
