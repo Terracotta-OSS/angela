@@ -38,7 +38,6 @@ import org.terracotta.angela.common.util.HostPort;
 import java.util.Collections;
 import java.util.Map;
 
-import static java.util.Collections.singleton;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
 import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
 import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
@@ -173,7 +172,7 @@ public class Tms implements AutoCloseable {
 
     logger.info("Attempting to remotely install if distribution already exists on {}", tmsHostname);
     IgniteCallable<Boolean> callable = () -> Agent.controller.installTms(instanceId, tmsHostname, distribution, license,
-        tmsServerSecurityConfig, localKitManager.getKitInstallationName(), tcEnv, singleton(tmsConfigurationContext.getHostname()));
+        tmsServerSecurityConfig, localKitManager.getKitInstallationName(), tcEnv, tmsConfigurationContext.getHostname(), kitInstallationPath);
     boolean isRemoteInstallationSuccessful = kitInstallationPath == null
                                              && IgniteClientHelper.executeRemotely(ignite, tmsHostname, ignitePort, callable);
 
