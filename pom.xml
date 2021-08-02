@@ -52,7 +52,7 @@
     <sshj.version>0.30.0</sshj.version>
     <awaitility.version>4.0.3</awaitility.version>
     <commons-io.version>2.7</commons-io.version>
-    <commons-compress.version>1.20</commons-compress.version>
+    <commons-compress.version>1.21</commons-compress.version>
     <zt-process-killer.version>1.10</zt-process-killer.version>
     <zt-exec.version>1.12</zt-exec.version>
     <logback-classic.version>1.2.3</logback-classic.version>
