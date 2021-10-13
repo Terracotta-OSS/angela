@@ -52,7 +52,7 @@ public abstract class DistributionController {
 
   public static ToolExecutionResult invokeJcmd(TerracottaServerHandle terracottaServerInstanceProcess, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
     int javaPid = terracottaServerInstanceProcess.getJavaPid();
-    String javaHome = tcEnv.getJavaHome();
+    Path javaHome = tcEnv.getJavaHome();
     Path path = JavaBinaries.find("jcmd", javaHome).orElseThrow(() -> new IllegalStateException("jcmd not found"));
     List<String> cmdLine = new ArrayList<>();
     cmdLine.add(path.toAbsolutePath().toString());

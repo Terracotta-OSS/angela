@@ -141,7 +141,7 @@ public class SshRemoteAgentLauncher implements RemoteAgentLauncher {
       }
 
       LOGGER.info("looking up remote JDK ...");
-      String remoteJavaHome = findJavaHomeFromRemoteToolchains(ssh);
+      Path remoteJavaHome = findJavaHomeFromRemoteToolchains(ssh);
 
       Session session = ssh.startSession();
       session.allocateDefaultPTY();
@@ -239,7 +239,7 @@ public class SshRemoteAgentLauncher implements RemoteAgentLauncher {
     ssh.newSCPFileTransfer().upload(agentJarFile.getPath(), remotePath);
   }
 
-  private String findJavaHomeFromRemoteToolchains(SSHClient ssh) throws IOException {
+  private Path findJavaHomeFromRemoteToolchains(SSHClient ssh) throws IOException {
     InMemoryDestFile localFile = new InMemoryDestFile() {
       private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
       @Override
@@ -257,7 +257,7 @@ public class SshRemoteAgentLauncher implements RemoteAgentLauncher {
     List<JDK> jdks = javaLocationResolver.resolveJavaLocations(tcEnv.getJavaVersion(), tcEnv.getJavaVendors(), false);
     // check JDK validity remotely
     for (JDK jdk : jdks) {
-      String remoteHome = jdk.getHome();
+      Path remoteHome = jdk.getHome();
       if (exec(ssh, "[ -d \"" + remoteHome + "\" ]") == 0) {
         LOGGER.info("found remote JDK : home='{}' version='{}' vendor='{}'", jdk.getHome(), jdk.getVersion(), jdk.getVendor());
         return remoteHome;

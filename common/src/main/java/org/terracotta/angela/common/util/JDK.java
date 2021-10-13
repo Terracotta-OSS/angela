@@ -15,21 +15,23 @@
  */
 package org.terracotta.angela.common.util;
 
+import java.nio.file.Path;
+
 public class JDK {
 
-  private final String home;
+  private final Path home;
   private final String version;
   private final String vendor;
   private final boolean valid;
 
-  public JDK(String home, String version, String vendor, boolean valid) {
+  public JDK(Path home, String version, String vendor, boolean valid) {
     this.home = home;
     this.version = version;
     this.vendor = vendor;
     this.valid = valid;
   }
 
-  public String getHome() {
+  public Path getHome() {
     return home;
   }
 

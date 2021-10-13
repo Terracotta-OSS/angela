@@ -47,6 +47,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
+import static org.terracotta.angela.common.util.JavaBinaries.javaHome;
+import static org.terracotta.angela.common.util.JavaBinaries.jdkHome;
 
 /**
  * @author Ludovic Orban
@@ -100,15 +102,19 @@ public class Client implements Closeable {
     }
   }
 
+  @SuppressWarnings("StatementWithEmptyBody")
   private List<File> listClasspathFiles(LocalKitManager localKitManager) {
     List<File> files = new ArrayList<>();
 
-    File javaHome = new File(System.getProperty("java.home"));
+    String javaHome = jdkHome().orElse(javaHome()).toString();
+    logger.debug("Skipping all JVM libraries inside {}", javaHome);
+
     String[] classpathJarNames = System.getProperty("java.class.path").split(File.pathSeparator);
     boolean substituteClientJars = localKitManager.getDistribution() != null;
-    List<File> jars = new ArrayList<>();
+    List<File> libs = new ArrayList<>();
+
     for (String classpathJarName : classpathJarNames) {
-      if (classpathJarName.startsWith(javaHome.getPath()) || classpathJarName.startsWith(javaHome.getParentFile().getPath())) {
+      if (classpathJarName.startsWith(javaHome)) {
         logger.debug("Skipping {} as it is part of the JVM", classpathJarName);
         continue; // part of the JVM, skip it
       }
@@ -117,7 +123,7 @@ public class Client implements Closeable {
       File equivalentClientJar = localKitManager.equivalentClientJar(classpathFile);
       if (substituteClientJars && equivalentClientJar != null) {
         logger.debug("Skipping upload of classpath file as kit contains equivalent jar in client libs : {}", classpathFile.getName());
-        jars.add(equivalentClientJar);
+        libs.add(equivalentClientJar);
         continue;
       }
 
@@ -127,8 +133,8 @@ public class Client implements Closeable {
 
     if (substituteClientJars) {
       logger.info("Enhancing client classpath with client jars of {}", localKitManager.getDistribution());
-      files.addAll(jars);
-      logger.debug("Adding clients jars : {}", jars);
+      files.addAll(libs);
+      logger.debug("Adding clients jars : {}", libs);
     }
 
     return files;
@@ -144,7 +150,7 @@ public class Client implements Closeable {
       }
     };
     if (ignite == null) {
-      IgniteClientHelper.executeRemotely(null,instanceId.toString(), ignitePort, call);
+      IgniteClientHelper.executeRemotely(null, instanceId.toString(), ignitePort, call);
       return CompletableFuture.completedFuture(null);
     } else {
       IgniteFuture<Void> igniteFuture = IgniteClientHelper.executeRemotelyAsync(ignite, instanceId.toString(), ignitePort, call);
@@ -186,7 +192,7 @@ public class Client implements Closeable {
     stop();
     if (!SKIP_UNINSTALL.getBooleanValue()) {
       logger.info("Wiping up client '{}' on {}", instanceId, clientId);
-      IgniteClientHelper.executeRemotely(ignite, getHostname(), ignitePort, (IgniteRunnable)() -> Agent.getInstance().getController().deleteClient(instanceId));
+      IgniteClientHelper.executeRemotely(ignite, getHostname(), ignitePort, (IgniteRunnable) () -> Agent.getInstance().getController().deleteClient(instanceId));
     }
   }
 
@@ -197,7 +203,7 @@ public class Client implements Closeable {
     stopped = true;
 
     logger.info("Killing client '{}' on {}", instanceId, clientId);
-    IgniteClientHelper.executeRemotely(ignite, getHostname(), ignitePort, (IgniteRunnable)() -> Agent.getInstance().getController().stopClient(instanceId, subClientPid));
+    IgniteClientHelper.executeRemotely(ignite, getHostname(), ignitePort, (IgniteRunnable) () -> Agent.getInstance().getController().stopClient(instanceId, subClientPid));
   }
 
   static class ClientJobFuture<V> implements Future<V> {

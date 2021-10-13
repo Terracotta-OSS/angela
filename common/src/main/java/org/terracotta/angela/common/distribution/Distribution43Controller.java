@@ -179,7 +179,7 @@ public class Distribution43Controller extends DistributionController {
   }
 
   private Number findWithJcmdJavaPidOf(String serverUuid, TerracottaCommandLineEnvironment tcEnv) {
-    String javaHome = tcEnv.getJavaHome();
+    Path javaHome = tcEnv.getJavaHome();
 
     Path path = JavaBinaries.find("jcmd", javaHome).orElseThrow(() -> new IllegalStateException("jcmd not found"));
 

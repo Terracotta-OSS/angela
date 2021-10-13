@@ -28,6 +28,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -107,8 +110,8 @@ public class JavaLocationResolver {
       Element providesElement = (Element) toolchainElement.getElementsByTagName("provides").item(0);
       Element configurationElement = (Element) toolchainElement.getElementsByTagName("configuration").item(0);
 
-      String home = configurationElement.getElementsByTagName("jdkHome").item(0).getTextContent();
-      boolean valid = new File(home).isDirectory();
+      Path home = Paths.get(configurationElement.getElementsByTagName("jdkHome").item(0).getTextContent());
+      boolean valid = Files.isDirectory(home);
 
       String version = textContentOf(providesElement, "version");
       String vendor = textContentOf(providesElement, "vendor");

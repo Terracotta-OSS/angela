@@ -25,8 +25,10 @@
 
   <logger name="net.schmizz.sshj" level="ERROR"/>
   <logger name="org.terracotta.utilities.exec.Shell" level="INFO"/>
+  <logger name="org.terracotta.utilities.test.net.NetStat" level="INFO"/>
+  <logger name="org.terracotta.utilities.io.Files" level="INFO"/>
 
-  <root level="WARN">
+  <root level="TRACE">
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>

@@ -18,7 +18,6 @@ package org.terracotta.angela.common.util;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -29,15 +28,28 @@ public class JavaBinaries {
 
   private static final boolean WIN = System.getProperty("os.name", "").toLowerCase().contains("win");
 
-  public static Optional<Path> find(String name) {
-    return find(name, System.getProperty("java.home"), System.getenv("JAVA_HOME"));
+  public static Path javaHome() {
+    return Paths.get(System.getProperty("java.home"));
   }
 
-  public static Optional<Path> find(String name, String... possibleJavaHomes) {
-    return Stream.of(possibleJavaHomes)
-        .filter(Objects::nonNull)
-        .map(Paths::get)
-        .flatMap(home -> Stream.of(home, home.getParent())) // second entry will be the jdk if home points to a jre
+  public static Optional<Path> jdkHome() {
+    return jdkOf(javaHome());
+  }
+
+  public static Optional<Path> jdkOf(Path javaHome) {
+    return Stream.of(javaHome, javaHome.getParent())
+        .map(home -> home.resolve("bin").resolve(bin("javac")))
+        .filter(Files::exists)
+        .map(p -> p.getParent().getParent())
+        .findFirst();
+  }
+
+  public static Optional<Path> find(String name) {
+    return find(name, javaHome());
+  }
+
+  public static Optional<Path> find(String name, Path javaHome) {
+    return jdkOf(javaHome).map(jdkHome -> Stream.of(javaHome, jdkHome)).orElse(Stream.of(javaHome))
         .map(home -> home.resolve("bin").resolve(bin(name)))
         .filter(Files::exists)
         .findFirst();

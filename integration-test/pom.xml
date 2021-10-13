@@ -80,10 +80,11 @@
           <argLine>-Xmx1024m</argLine>
           <systemPropertyVariables>
             <angela.rootDir>${project.build.directory}/angela</angela.rootDir>
-            <angela.skipUninstall>false</angela.skipUninstall>
+            <angela.skipUninstall>true</angela.skipUninstall>
             <angela.kitCopy>false</angela.kitCopy>
             <angela.tsa.fullLogging>true</angela.tsa.fullLogging>
             <angela.java.resolver>user</angela.java.resolver>
+            <angela.igniteLogging>true</angela.igniteLogging>
             <!--<angela.java.opts>-agentlib:jdwp=transport=dt_socket,server=n,address=c02yj2f2jgh6.home:5005,suspend=n</angela.java.opts>-->
             <jdk.security.allowNonCaAnchor>true</jdk.security.allowNonCaAnchor>
           </systemPropertyVariables>
