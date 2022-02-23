@@ -114,7 +114,7 @@ public class Distribution102Controller extends DistributionController {
             .environment(env)
             .redirectErrorStream(true)
             .redirectOutput(serverLogOutputStream),
-        stateRef,
+        stateRef::set,
         TerracottaServerState.STOPPED);
 
     while (javaPid.get() == -1 && watchedProcess.isAlive()) {
@@ -222,7 +222,7 @@ public class Distribution102Controller extends DistributionController {
         .directory(workingDir)
         .environment(env)
         .redirectErrorStream(true)
-        .redirectOutput(outputStream), stateRef, TerracottaManagementServerState.STOPPED);
+        .redirectOutput(outputStream), stateRef::set, TerracottaManagementServerState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaManagementServerState.STOPPED) && watchedProcess.isAlive()) {
       try {

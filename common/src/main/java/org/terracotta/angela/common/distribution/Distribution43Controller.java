@@ -131,7 +131,7 @@ public class Distribution43Controller extends DistributionController {
             .environment(env)
             .redirectErrorStream(true)
             .redirectOutput(serverLogOutputStream),
-        stateRef,
+        stateRef::set,
         STOPPED);
 
     Number javaPid = findWithJcmdJavaPidOf(terracottaServer.getId().toString(), tcEnv);

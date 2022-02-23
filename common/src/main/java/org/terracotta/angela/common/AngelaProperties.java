@@ -62,6 +62,10 @@ public enum AngelaProperties {
   SSH_STRICT_HOST_CHECKING("angela.ssh.strictHostKeyChecking", "true"),
   SSH_PORT("angela.ssh.port", "22"),
 
+  // watch for TSA process not exiting properly when starting and an exception happens,
+  // killing the main thread but leaving other threads blocking the servers
+  TSA_WATCHGUARD("angela.tsa.watch", "true"),
+
   // logging properties
   TMS_FULL_LOGGING("angela.tms.fullLogging", "false"),
   TSA_FULL_LOGGING("angela.tsa.fullLogging", "false"),

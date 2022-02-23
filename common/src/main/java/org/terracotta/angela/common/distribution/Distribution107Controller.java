@@ -57,8 +57,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static java.io.File.separator;
@@ -85,70 +88,18 @@ public class Distribution107Controller extends DistributionController {
                                           Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
                                           TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
     Map<String, String> env = tcEnv.buildEnv(envOverrides);
+    Timer timer = new Timer(terracottaServer.getServerSymbolicName().getSymbolicName() + "-watchguard", true);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
-    AtomicInteger javaPid = new AtomicInteger(-1);
-
-    TriggeringOutputStream serverLogOutputStream = TriggeringOutputStream
-        .triggerOn(
-            compile("^.*\\QStarted the server in diagnostic mode\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.STARTED_IN_DIAGNOSTIC_MODE))
-        .andTriggerOn(
-            compile("^.*\\QTerracotta Server instance has started up as ACTIVE\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.STARTED_AS_ACTIVE))
-        .andTriggerOn(
-            compile("^.*\\QMoved to State[ PASSIVE-STANDBY ]\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.STARTED_AS_PASSIVE))
-        .andTriggerOn(
-            compile("^.*\\QMOVE_TO_ACTIVE not allowed because not enough servers are connected\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.START_SUSPENDED))
-        .andTriggerOn(
-            compile("^.*PID is (\\d+).*$"),
-            mr -> {
-              javaPid.set(parseInt(mr.group(1)));
-              stateRef.compareAndSet(TerracottaServerState.STOPPED, TerracottaServerState.STARTING);
-            });
-
-    final AtomicReference<Writer> stdout = new AtomicReference<>();
-    try {
-      stdout.set(Files.newBufferedWriter(workingDir.toPath().resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
-      serverLogOutputStream = serverLogOutputStream.andForward(line -> {
-        try {
-          stdout.get().write(line);
-          stdout.get().append('\n');
-          stdout.get().flush();
-        } catch (IOException io) {
-          LOGGER.warn("failed to write to stdout file", io);
-        }
-      });
-    } catch (IOException io) {
-      LOGGER.warn("failed to create stdout file", io);
-      serverLogOutputStream = tsaFullLogging ?
-          serverLogOutputStream.andForward(line -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), line)) :
-          serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
-    }
-
-    WatchedProcess<TerracottaServerState> watchedProcess = new WatchedProcess<>(
-        new ProcessExecutor()
-            .command(createTsaCommand(terracottaServer, kitDir, workingDir, startUpArgs))
-            .directory(workingDir)
-            .environment(env)
-            .redirectErrorStream(true)
-            .redirectOutput(serverLogOutputStream),
-        stateRef,
-        TerracottaServerState.STOPPED);
-
-    while (javaPid.get() == -1 && watchedProcess.isAlive()) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+    Consumer<TerracottaServerState> stateUpdater = newState -> {
+      stateRef.set(newState);
+      if (newState != TerracottaServerState.STARTING && newState != TerracottaServerState.NOT_INSTALLED) {
+        timer.cancel();
       }
-    }
-
-    if (!watchedProcess.isAlive()) {
-      throw new RuntimeException("Terracotta server process died in its infancy : " + terracottaServer.getServerSymbolicName());
-    }
-    return new TerracottaServerHandle() {
+    };
+    AtomicInteger javaPid = new AtomicInteger(-1);
+    AtomicReference<Writer> stdout = new AtomicReference<>();
+    AtomicReference<WatchedProcess<TerracottaServerState>> process = new AtomicReference<>();
+    TerracottaServerHandle terracottaServerHandle = new TerracottaServerHandle() {
       @Override
       public TerracottaServerState getState() {
         return stateRef.get();
@@ -161,7 +112,7 @@ public class Distribution107Controller extends DistributionController {
 
       @Override
       public boolean isAlive() {
-        return watchedProcess.isAlive();
+        return process.get().isAlive();
       }
 
       @Override
@@ -169,12 +120,12 @@ public class Distribution107Controller extends DistributionController {
         try {
           ProcessUtil.destroyGracefullyOrForcefullyAndWait(javaPid.get());
         } catch (Exception e) {
-          throw new RuntimeException("Could not destroy TC server process with PID " + watchedProcess.getPid(), e);
+          throw new RuntimeException("Could not destroy TC server process with PID " + process.get().getPid(), e);
         }
         try {
-          ProcessUtil.destroyGracefullyOrForcefullyAndWait(watchedProcess.getPid());
+          ProcessUtil.destroyGracefullyOrForcefullyAndWait(process.get().getPid());
         } catch (Exception e) {
-          throw new RuntimeException("Could not destroy TC server process with PID " + watchedProcess.getPid(), e);
+          throw new RuntimeException("Could not destroy TC server process with PID " + process.get().getPid(), e);
         }
         final int maxWaitTimeMillis = 30000;
         if (!RetryUtils.waitFor(() -> getState() == TerracottaServerState.STOPPED, maxWaitTimeMillis)) {
@@ -196,6 +147,87 @@ public class Distribution107Controller extends DistributionController {
         }
       }
     };
+    // this timer will kill the TSA process if it didn't reach another state within 30 sec.
+    // this can happen in case of a bug preventing the server to exit if a thread is not interrupted.
+    // this issue can be seen in the case of service provider initialization failure which cause the server
+    // to stop, main thread is gone, but SingleThreadedTimer has a waiting thread preventing the server to exit
+    TimerTask task = new TimerTask() {
+      @Override
+      public void run() {
+        LOGGER.error("**************************");
+        LOGGER.error("POSSIBLE BUG IN CORE");
+        LOGGER.error("**************************");
+        LOGGER.error("TSA PROCESS WITH PID: {} WILL BE KILLED", javaPid.get());
+        LOGGER.error("It seems to be stuck starting, and it could not reach another state within 20 seconds");
+        LOGGER.error("It is possible that server startup has failed because of an exception, leaving some threads behind preventing the server to exit properly.");
+        LOGGER.error("Use angela.tsa.watch=false to disable this watch guard. This might make the test block, and you will be able to use jps and jstack.");
+        LOGGER.error("**************************");
+        terracottaServerHandle.stop();
+      }
+    };
+
+    TriggeringOutputStream serverLogOutputStream = TriggeringOutputStream
+        .triggerOn(
+            compile("^.*\\QStarted the server in diagnostic mode\\E.*$"),
+            mr -> stateUpdater.accept(TerracottaServerState.STARTED_IN_DIAGNOSTIC_MODE))
+        .andTriggerOn(
+            compile("^.*\\QTerracotta Server instance has started up as ACTIVE\\E.*$"),
+            mr -> stateUpdater.accept(TerracottaServerState.STARTED_AS_ACTIVE))
+        .andTriggerOn(
+            compile("^.*\\QMoved to State[ PASSIVE-STANDBY ]\\E.*$"),
+            mr -> stateUpdater.accept(TerracottaServerState.STARTED_AS_PASSIVE))
+        .andTriggerOn(
+            compile("^.*\\QMOVE_TO_ACTIVE not allowed because not enough servers are connected\\E.*$"),
+            mr -> stateUpdater.accept(TerracottaServerState.START_SUSPENDED))
+        .andTriggerOn(
+            compile("^.*PID is (\\d+).*$"),
+            mr -> {
+              javaPid.set(parseInt(mr.group(1)));
+              stateRef.compareAndSet(TerracottaServerState.STOPPED, TerracottaServerState.STARTING);
+              timer.schedule(task, 20_000);
+            });
+
+    try {
+      stdout.set(Files.newBufferedWriter(workingDir.toPath().resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+      serverLogOutputStream = serverLogOutputStream.andForward(line -> {
+        try {
+          stdout.get().write(line);
+          stdout.get().append('\n');
+          stdout.get().flush();
+        } catch (IOException io) {
+          LOGGER.warn("failed to write to stdout file", io);
+        }
+      });
+    } catch (IOException io) {
+      LOGGER.warn("failed to create stdout file", io);
+      serverLogOutputStream = tsaFullLogging ?
+          serverLogOutputStream.andForward(line -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), line)) :
+          serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
+    }
+
+    process.set(new WatchedProcess<>(
+        new ProcessExecutor()
+            .command(createTsaCommand(terracottaServer, kitDir, workingDir, startUpArgs))
+            .directory(workingDir)
+            .environment(env)
+            .redirectErrorStream(true)
+            .redirectOutput(serverLogOutputStream),
+        stateUpdater,
+        TerracottaServerState.STOPPED));
+
+    while (javaPid.get() == -1 && process.get().isAlive()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    if (!process.get().isAlive()) {
+      throw new RuntimeException("Terracotta server process died in its infancy : " + terracottaServer.getServerSymbolicName());
+    }
+
+    return terracottaServerHandle;
   }
 
   @Override
@@ -227,7 +259,7 @@ public class Distribution107Controller extends DistributionController {
         .directory(workingDir)
         .environment(env)
         .redirectErrorStream(true)
-        .redirectOutput(outputStream), stateRef, TerracottaManagementServerState.STOPPED);
+        .redirectOutput(outputStream), stateRef::set, TerracottaManagementServerState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaManagementServerState.STOPPED) && watchedProcess.isAlive()) {
       try {
@@ -287,7 +319,7 @@ public class Distribution107Controller extends DistributionController {
             .environment(env)
             .redirectErrorStream(true)
             .redirectOutput(outputStream),
-        stateRef,
+        stateRef::set,
         TerracottaVoterState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaVoterState.STOPPED) && watchedProcess.isAlive()) {
