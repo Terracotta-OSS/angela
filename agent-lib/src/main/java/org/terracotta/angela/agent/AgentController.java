@@ -220,10 +220,7 @@ public class AgentController {
         return false;
       }
 
-      // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
-      if (kitInstallationPath == null) {
-        distribution.createDistributionController().prepareTMS(dirs.get().kitDir, dirs.get().workingDir, tmsServerSecurityConfig);
-      }
+      distribution.createDistributionController().prepareTMS(dirs.get().kitDir, dirs.get().workingDir, tmsServerSecurityConfig);
 
       tmsInstalls.put(instanceId, new TmsInstall(distribution, dirs.get().kitDir, dirs.get().workingDir, tcEnv));
       return true;
