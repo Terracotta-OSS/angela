@@ -19,6 +19,8 @@ import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.topology.Topology;
 
+import java.time.Duration;
+
 public interface TsaConfigurationContext {
   Topology getTopology();
 
@@ -27,6 +29,11 @@ public interface TsaConfigurationContext {
   String getClusterName();
 
   TerracottaCommandLineEnvironment getTerracottaCommandLineEnvironment(String whatFor);
+
+  /**
+   * TSA will be killed if notthing happens in a specified amount of time
+   */
+  Duration getInactivityKillerDelay();
 
   interface TerracottaCommandLineEnvironmentKeys {
     String JCMD = "Jcmd";

@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -90,7 +91,8 @@ public class Distribution43Controller extends DistributionController {
   @Override
   public TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                           Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
-                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
+                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides,
+                                          List<String> startUpArgs, Duration inactivityKillerDelay) {
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(STOPPED);
     AtomicReference<TerracottaServerState> tempStateRef = new AtomicReference<>(STOPPED);
 

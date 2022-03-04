@@ -23,9 +23,12 @@ import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
+import org.terracotta.angela.common.util.ActivityTracker;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -33,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,21 +56,29 @@ public class Distribution107InlineController extends Distribution107Controller {
 
   @Override
   public TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
-                                                   Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
-                                                   TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
+                                          Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
+                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides,
+                                          List<String> startUpArgs, Duration inactivityKillerDelay) {
     List<String> options = startUpArgs != null && !startUpArgs.isEmpty() ? addServerHome(startUpArgs, workingDir) : addOptions(terracottaServer, workingDir);
 
-    return createServer(kitDir.toPath(), terracottaServer.getServerSymbolicName().getSymbolicName(), workingDir.toPath(), options);
+    return createServer(kitDir.toPath(), terracottaServer.getServerSymbolicName().getSymbolicName(), workingDir.toPath(), options, inactivityKillerDelay);
   }
 
-  private TerracottaServerHandle createServer(Path kitDir, String serverName, Path serverWorking, List<String> cmd) {
+  private TerracottaServerHandle createServer(Path kitDir, String serverName, Path serverWorking, List<String> cmd, Duration inactivityKillerDelay) {
     LOGGER.debug("Creating TSA server: {} at: {} from: {} with CLI: {}", serverName, serverWorking, kitDir, String.join(" ", cmd));
-    AtomicReference<Object> ref = new AtomicReference<>(startIsolatedServer(kitDir, serverName, serverWorking, cmd));
+    ActivityTracker inactivityTracker = ActivityTracker.of(inactivityKillerDelay);
+    TrackedOutputStream trackedOutputStream;
+    try {
+      trackedOutputStream = new TrackedOutputStream(inactivityTracker, Files.newOutputStream(serverWorking.resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    AtomicReference<Object> ref = new AtomicReference<>(startIsolatedServer(kitDir, serverWorking, cmd, trackedOutputStream));
     AtomicBoolean isAlive = new AtomicBoolean(true);
-    Thread t = new Thread(()->{
+    Thread t = new Thread(() -> {
       try {
-        while ((Boolean)invokeOnObject(ref.get(), "waitUntilShutdown")) {
-          ref.set(startIsolatedServer(kitDir, serverName, serverWorking, cmd));
+        while ((Boolean) invokeOnObject(ref.get(), "waitUntilShutdown")) {
+          ref.set(startIsolatedServer(kitDir, serverWorking, cmd, trackedOutputStream));
         }
       } catch (Throwable tt) {
         ref.set(null);
@@ -77,8 +89,7 @@ public class Distribution107InlineController extends Distribution107Controller {
     t.setDaemon(true);
     t.start();
 
-    return new TerracottaServerHandle() {
-
+    final TerracottaServerHandle handle = new TerracottaServerHandle() {
       @Override
       public TerracottaServerState getState() {
         if (isAlive()) {
@@ -112,7 +123,7 @@ public class Distribution107InlineController extends Distribution107Controller {
               }
               return TerracottaServerState.STARTED_AS_PASSIVE;
             default:
-              return (!isAlive() || ((Boolean)invoke("isStopped"))) ? TerracottaServerState.STOPPED : TerracottaServerState.STARTING;
+              return (!isAlive() || ((Boolean) invoke("isStopped"))) ? TerracottaServerState.STOPPED : TerracottaServerState.STARTING;
           }
         } else {
           return TerracottaServerState.STOPPED;
@@ -135,6 +146,7 @@ public class Distribution107InlineController extends Distribution107Controller {
         while (stop) {
           stop = Boolean.parseBoolean(invokeOnServerMBean("Server", "stopAndWait", null));
         }
+        inactivityTracker.stop();
       }
 
       private String invokeOnServerMBean(String target, String call, String arg) {
@@ -144,10 +156,10 @@ public class Distribution107InlineController extends Distribution107Controller {
           m.setAccessible(true);
           return m.invoke(serverJMX, target, call, arg).toString();
         } catch (NoSuchMethodException |
-                SecurityException |
-                IllegalAccessException |
-                IllegalArgumentException |
-                InvocationTargetException s) {
+            SecurityException |
+            IllegalAccessException |
+            IllegalArgumentException |
+            InvocationTargetException s) {
           LOGGER.warn("unable to call", s);
           return "ERROR";
         }
@@ -157,12 +169,23 @@ public class Distribution107InlineController extends Distribution107Controller {
         return invokeOnObject(ref.get(), method);
       }
     };
+
+    inactivityTracker.onInactivity(() -> {
+      LOGGER.error("************************************************************");
+      LOGGER.error("Server: " + serverName + " will be stopped or killed because it is inactive since: " + inactivityKillerDelay);
+      LOGGER.error("This situation must be inspected because it could be created by a thread preventing the server to shutdown");
+      LOGGER.error("If the inactivity is expected, please increase the 'InactivityKillerDelay' in TSA configuration");
+      LOGGER.error("************************************************************");
+      handle.stop();
+    });
+
+    return handle;
   }
 
-  private static Object invokeOnObject(Object server, String method, Object...args) {
+  private static Object invokeOnObject(Object server, String method, Object... args) {
     try {
       Class<?>[] clazz = new Class<?>[args.length];
-      for (int x=0;x<args.length;x++) {
+      for (int x = 0; x < args.length; x++) {
         Class<?> sig = args[x] != null ? args[x].getClass() : null;
         clazz[x] = sig;
       }
@@ -175,7 +198,7 @@ public class Distribution107InlineController extends Distribution107Controller {
     }
   }
 
-  private synchronized Object startIsolatedServer(Path kitDir, String serverName, Path serverWorking, List<String> cmd) {
+  private synchronized Object startIsolatedServer(Path kitDir, Path serverWorking, List<String> cmd, TrackedOutputStream outputStream) {
     Path tc = kitDir.resolve(Paths.get("server", "lib", "tc.jar"));
     ClassLoader oldLoader = Thread.currentThread().getContextClassLoader();
     Thread.currentThread().setContextClassLoader(null);
@@ -184,9 +207,11 @@ public class Distribution107InlineController extends Distribution107Controller {
       URL resource = serverWorking.toUri().toURL();
       System.setProperty("tc.install-root", kitDir.resolve("server").toString());
 
-      ClassLoader loader = new IsolatedClassLoader(new URL[] {resource, url});
+      ClassLoader loader = new IsolatedClassLoader(new URL[]{resource, url});
       Method m = Class.forName("com.tc.server.TCServerMain", true, loader).getMethod("createServer", List.class, OutputStream.class);
-      return m.invoke(null, cmd, Files.newOutputStream(serverWorking.resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+      Object o = m.invoke(null, cmd, outputStream);
+      outputStream.getActivityTracker().start();
+      return o;
     } catch (RuntimeException mal) {
       throw mal;
     } catch (Exception e) {

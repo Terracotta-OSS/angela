@@ -33,6 +33,7 @@ import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.tms.security.config.TmsServerSecurityConfig;
 import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.topology.Topology;
+import org.terracotta.angela.common.util.ActivityTracker;
 import org.terracotta.angela.common.util.ExternalLoggers;
 import org.terracotta.angela.common.util.HostPort;
 import org.terracotta.angela.common.util.OS;
@@ -45,12 +46,14 @@ import org.zeroturnaround.exec.stream.slf4j.Slf4jStream;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Writer;
+import java.io.OutputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -72,6 +75,7 @@ import static org.terracotta.angela.common.AngelaProperties.VOTER_FULL_LOGGING;
 
 public class Distribution107Controller extends DistributionController {
   private final static Logger LOGGER = LoggerFactory.getLogger(Distribution107Controller.class);
+  private static final byte[] LF = "\n".getBytes(StandardCharsets.UTF_8);
   private final boolean tsaFullLogging = TSA_FULL_LOGGING.getBooleanValue();
   private final boolean tmsFullLogging = TMS_FULL_LOGGING.getBooleanValue();
   private final boolean voterFullLogging = VOTER_FULL_LOGGING.getBooleanValue();
@@ -83,7 +87,8 @@ public class Distribution107Controller extends DistributionController {
   @Override
   public TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                           Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
-                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
+                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides,
+                                          List<String> startUpArgs, Duration inactivityKillerDelay) {
     Map<String, String> env = tcEnv.buildEnv(envOverrides);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
@@ -108,13 +113,13 @@ public class Distribution107Controller extends DistributionController {
               stateRef.compareAndSet(TerracottaServerState.STOPPED, TerracottaServerState.STARTING);
             });
 
-    final AtomicReference<Writer> stdout = new AtomicReference<>();
+    final AtomicReference<OutputStream> stdout = new AtomicReference<>();
     try {
-      stdout.set(Files.newBufferedWriter(workingDir.toPath().resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+      stdout.set(Files.newOutputStream(workingDir.toPath().resolve("stdout.txt"), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
       serverLogOutputStream = serverLogOutputStream.andForward(line -> {
         try {
-          stdout.get().write(line);
-          stdout.get().append('\n');
+          stdout.get().write(line.getBytes(StandardCharsets.UTF_8));
+          stdout.get().write(LF);
           stdout.get().flush();
         } catch (IOException io) {
           LOGGER.warn("failed to write to stdout file", io);
@@ -127,15 +132,19 @@ public class Distribution107Controller extends DistributionController {
           serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
     }
 
+    final ActivityTracker activityTracker = ActivityTracker.of(inactivityKillerDelay);
+
     WatchedProcess<TerracottaServerState> watchedProcess = new WatchedProcess<>(
         new ProcessExecutor()
             .command(createTsaCommand(terracottaServer, kitDir, workingDir, startUpArgs))
             .directory(workingDir)
             .environment(env)
             .redirectErrorStream(true)
-            .redirectOutput(serverLogOutputStream),
+            .redirectOutput(new TrackedOutputStream(activityTracker, serverLogOutputStream)),
         stateRef,
         TerracottaServerState.STOPPED);
+
+    activityTracker.start();
 
     while (javaPid.get() == -1 && watchedProcess.isAlive()) {
       try {
@@ -148,7 +157,7 @@ public class Distribution107Controller extends DistributionController {
     if (!watchedProcess.isAlive()) {
       throw new RuntimeException("Terracotta server process died in its infancy : " + terracottaServer.getServerSymbolicName());
     }
-    return new TerracottaServerHandle() {
+    final TerracottaServerHandle handle = new TerracottaServerHandle() {
       @Override
       public TerracottaServerState getState() {
         return stateRef.get();
@@ -188,6 +197,7 @@ public class Distribution107Controller extends DistributionController {
               )
           );
         }
+        activityTracker.stop();
         if (stdout.get() != null) {
           try {
             stdout.get().close();
@@ -196,6 +206,17 @@ public class Distribution107Controller extends DistributionController {
         }
       }
     };
+
+    activityTracker.onInactivity(() -> {
+      LOGGER.error("************************************************************");
+      LOGGER.error("Server: " + terracottaServer.getServerSymbolicName().getSymbolicName() + " will be stopped or killed because it is inactive since: " + inactivityKillerDelay);
+      LOGGER.error("This situation must be inspected because it could be created by a thread preventing the server to shutdown");
+      LOGGER.error("If the inactivity is expected, please increase the 'InactivityKillerDelay' in TSA configuration");
+      LOGGER.error("************************************************************");
+      handle.stop();
+    });
+
+    return handle;
   }
 
   @Override

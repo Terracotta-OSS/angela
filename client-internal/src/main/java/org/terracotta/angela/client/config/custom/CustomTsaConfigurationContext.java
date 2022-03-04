@@ -20,6 +20,7 @@ import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.topology.Topology;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ public class CustomTsaConfigurationContext implements TsaConfigurationContext {
   private String clusterName;
   private final Map<String, TerracottaCommandLineEnvironment> terracottaCommandLineEnvironments = new HashMap<>();
   private TerracottaCommandLineEnvironment defaultTerracottaCommandLineEnvironment = TerracottaCommandLineEnvironment.DEFAULT;
+  private Duration inactivityKillerDelay = Duration.ZERO; // disabled
 
   protected CustomTsaConfigurationContext() {
   }
@@ -67,6 +69,19 @@ public class CustomTsaConfigurationContext implements TsaConfigurationContext {
   public TerracottaCommandLineEnvironment getTerracottaCommandLineEnvironment(String key) {
     TerracottaCommandLineEnvironment tce = terracottaCommandLineEnvironments.get(key);
     return tce != null ? tce : defaultTerracottaCommandLineEnvironment;
+  }
+
+  @Override
+  public Duration getInactivityKillerDelay() {
+    return inactivityKillerDelay;
+  }
+
+  /**
+   * TSA will be killed if no activity after this period of time in the logs
+   */
+  public CustomTsaConfigurationContext setInactivityKillerDelay(Duration inactivityKillerDelay) {
+    this.inactivityKillerDelay = inactivityKillerDelay;
+    return this;
   }
 
   public CustomTsaConfigurationContext terracottaCommandLineEnvironment(TerracottaCommandLineEnvironment terracottaCommandLineEnvironment) {

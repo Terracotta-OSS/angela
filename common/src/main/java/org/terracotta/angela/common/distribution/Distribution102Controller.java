@@ -55,6 +55,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -88,7 +89,8 @@ public class Distribution102Controller extends DistributionController {
   @Override
   public TerracottaServerHandle createTsa(TerracottaServer terracottaServer, File kitDir, File workingDir,
                                           Topology topology, Map<ServerSymbolicName, Integer> proxiedPorts,
-                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs) {
+                                          TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides,
+                                          List<String> startUpArgs, Duration inactivityKillerDelay) {
     Map<String, String> env = tcEnv.buildEnv(envOverrides);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);

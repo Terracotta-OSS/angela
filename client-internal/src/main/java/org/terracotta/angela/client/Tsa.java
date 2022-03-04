@@ -44,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -236,7 +237,8 @@ public class Tsa implements AutoCloseable {
         logger.info("Creating TSA: {} on: {}", instanceId, agentID);
         String whatFor = SERVER_START_PREFIX + terracottaServer.getServerSymbolicName().getSymbolicName();
         TerracottaCommandLineEnvironment cliEnv = tsaConfigurationContext.getTerracottaCommandLineEnvironment(whatFor);
-        IgniteRunnable tsaCreator = () -> AgentController.getInstance().createTsa(instanceId, terracottaServer, cliEnv, envOverrides, Arrays.asList(startUpArgs));
+        Duration inactivityKillerDelay = tsaConfigurationContext.getInactivityKillerDelay();
+        IgniteRunnable tsaCreator = () -> AgentController.getInstance().createTsa(instanceId, terracottaServer, cliEnv, envOverrides, Arrays.asList(startUpArgs), inactivityKillerDelay);
         executor.execute(agentID, tsaCreator);
         return this;
     }

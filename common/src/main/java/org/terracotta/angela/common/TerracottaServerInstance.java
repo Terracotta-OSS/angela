@@ -29,6 +29,7 @@ import org.terracotta.angela.common.util.Jcmd;
 
 import java.io.Closeable;
 import java.io.File;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -86,8 +87,8 @@ public class TerracottaServerInstance implements Closeable {
     return distribution;
   }
 
-  public void create(TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, List<String> startUpArgs) {
-    setServerHandle(this.distributionController.createTsa(terracottaServer, kitDir, workingDir, topology, proxiedPorts, env, envOverrides, startUpArgs));
+  public void create(TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, List<String> startUpArgs, Duration inactivityKillerDelay) {
+    setServerHandle(this.distributionController.createTsa(terracottaServer, kitDir, workingDir, topology, proxiedPorts, env, envOverrides, startUpArgs, inactivityKillerDelay));
   }
 
   private synchronized TerracottaServerHandle getServerHandle() {
