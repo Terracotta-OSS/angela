@@ -37,7 +37,7 @@
   <logger name="net.schmizz.sshj.common.ECDSAVariationsAdapter" level="INFO"/>
   <logger name="net.schmizz.sshj.connection.channel.direct.SessionChannel" level="INFO"/>
 
-  <logger name="org.terracotta.angela" level="INFO"/>
+  <logger name="org.terracotta.angela" level="TRACE"/>
 
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
