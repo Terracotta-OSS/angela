@@ -47,7 +47,7 @@ import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
 public class Tms implements AutoCloseable {
 
-  private final static Logger logger = LoggerFactory.getLogger(Tms.class);
+  private final static Logger logger = LoggerFactory.getLogger(Tsa.class);
 
   private final transient TmsConfigurationContext tmsConfigurationContext;
   private boolean closed = false;
