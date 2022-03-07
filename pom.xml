@@ -337,12 +337,6 @@
                     <dependencyConvergence>
                       <uniqueVersions>true</uniqueVersions>
                     </dependencyConvergence>
-                    <requireJavaVersion>
-                      <version>[${java.build.version},)</version>
-                    </requireJavaVersion>
-                    <requireMavenVersion>
-                      <version>[${maven.version},)</version>
-                    </requireMavenVersion>
                     <bannedDependencies>
                       <excludes>
                         <exclude>com.github.stefanbirkner:system-rules</exclude>
