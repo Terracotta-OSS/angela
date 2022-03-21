@@ -102,7 +102,7 @@
                 So to test SSH locally, we can simulate a new hostname.
              -->
             <script><![CDATA[
-new File(project.build.directory, "fake-hosts.txt").text = """${InetAddress.getLocalHost().getHostAddress()} ${InetAddress.getLocalHost().getHostName()}
+new File(project.build.directory, "fake-hosts.txt").text = """${InetAddress.getLocalHost().getHostAddress()} ${"hostname".execute().text.trim()}
 ${InetAddress.getLocalHost().getHostAddress()} testhostname
 ${InetAddress.getByName("oss.sonatype.org").getHostAddress()} oss.sonatype.org"""
 println(new File(project.build.directory, "fake-hosts.txt").text)
@@ -124,7 +124,6 @@ println(new File(project.build.directory, "fake-hosts.txt").text)
         <configuration>
           <!-- Without this, IT tests do not run on Java 11. Why ?? -->
           <useModulePath>false</useModulePath>
-          <argLine>-Xmx1024m</argLine>
           <systemPropertyVariables>
             <angela.rootDir>${project.build.directory}/angela</angela.rootDir>
             <angela.skipUninstall>true</angela.skipUninstall>
@@ -132,8 +131,8 @@ println(new File(project.build.directory, "fake-hosts.txt").text)
             <angela.tsa.fullLogging>true</angela.tsa.fullLogging>
             <angela.java.resolver>user</angela.java.resolver>
             <angela.igniteLogging>false</angela.igniteLogging>
-            <angela.agent.debug>falsetrue</angela.agent.debug>
-            <angela.java.opts>-Djdk.security.allowNonCaAnchor=false -Djdk.net.hosts.file=${project.build.directory}/fake-hosts.txt -Dangela.agent.debug=false -DIGNITE_UPDATE_NOTIFIER=false</angela.java.opts>
+            <angela.agent.debug>false</angela.agent.debug>
+            <angela.java.opts>-Dangela.agent.debug=false -Djdk.net.hosts.file=${project.build.directory}/fake-hosts.txt -DIGNITE_UPDATE_NOTIFIER=false</angela.java.opts>
             <jdk.security.allowNonCaAnchor>true</jdk.security.allowNonCaAnchor>
             <!-- tells the JDK to use this file instead of /etc/hosts -->
             <jdk.net.hosts.file>${project.build.directory}/fake-hosts.txt</jdk.net.hosts.file>
