@@ -28,7 +28,7 @@
   </parent>
 
   <artifactId>angela-root</artifactId>
-  <version>3.3.16-SNAPSHOT</version>
+  <version>3.3.16</version>
   <packaging>pom</packaging>
   <name>angela</name>
 
