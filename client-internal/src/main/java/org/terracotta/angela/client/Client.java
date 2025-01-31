@@ -88,8 +88,8 @@ public class Client implements Closeable {
 
   public static Client spawn(Executor executor, InstanceId instanceId, ClientId clientId, ClientArrayConfigurationContext clientArrayConfigurationContext, LocalKitManager localKitManager, TerracottaCommandLineEnvironment tcEnv) {
     final AgentID parentAgentID = executor.getAgentID(clientId.getHostName());
-    logger.info("Spawning client: {} instance: {} through agent: {}", clientId, instanceId, parentAgentID);
-
+    logger.info("Spawning client: {} instance: {} through agent: {}; using environment: {}", clientId, instanceId, parentAgentID, tcEnv);
+  
     String kitInstallationPath = getEitherOf(KIT_INSTALLATION_DIR, KIT_INSTALLATION_PATH);
     localKitManager.setupLocalInstall(clientArrayConfigurationContext.getLicense(), kitInstallationPath, OFFLINE.getBooleanValue(), tcEnv);
 
@@ -153,6 +153,7 @@ public class Client implements Closeable {
         clientJob.run(cluster);
         return null;
       } catch (Throwable t) {
+        logger.error("clientJob failed", t);
         throw new IgniteFutureAdapter.RemoteExecutionException("Remote ClientJob failed", exceptionToString(t));
       }
     };
@@ -193,7 +194,14 @@ public class Client implements Closeable {
     stop();
     if (!SKIP_UNINSTALL.getBooleanValue()) {
       logger.debug("Wiping up data for client: {} instance: {} started from: {}", clientId, instanceId, parentAgentID);
-      executor.execute(parentAgentID, (IgniteRunnable) () -> AgentController.getInstance().deleteClient(instanceId));
+      try {
+        executor.execute(parentAgentID, (IgniteRunnable) () -> AgentController.getInstance().deleteClient(instanceId));
+      } catch (Throwable e) {
+        logger.error("Error wiping data for client {} instance {}", clientId, instanceId, e);
+        if (e instanceof Error) {
+          throw e;
+        }
+      }
     }
   }
 
@@ -205,6 +213,12 @@ public class Client implements Closeable {
 
     logger.info("Killing agent: {} for client:{} instance: {} started from: {}", clientAgentID, clientId, instanceId, parentAgentID);
     final int pid = clientAgentID.getPid();
-    executor.execute(parentAgentID, (IgniteRunnable) () -> AgentController.getInstance().stopClient(instanceId, pid));
+    try {
+      executor.execute(parentAgentID, (IgniteRunnable) () -> AgentController.getInstance().stopClient(instanceId, pid));
+      executor.getGroup().getAllAgents().remove(clientAgentID);   // Dead agent -- remove
+    } catch (Throwable e) {
+      logger.error("Error killing agent {} for client {}", clientAgentID, clientId, e);
+      throw e;
+    }
   }
 }

@@ -32,6 +32,7 @@ import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.IpUtils;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -79,8 +80,9 @@ public class IgniteLocalExecutor implements Executor {
         .filter(Optional::isPresent)
         .map(Optional::get)
         .toArray(CompletableFuture[]::new));
+    Duration timeout = Duration.ofSeconds(30L);
     try {
-      future.get(20, TimeUnit.SECONDS);
+      future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e);
@@ -88,7 +90,7 @@ public class IgniteLocalExecutor implements Executor {
       // impossible to go there
       throw new AssertionError(e.getCause());
     } catch (TimeoutException e) {
-      logger.warn("Some agents did not shutdown within 20 seconds: {}", agentGroup.getSpawnedAgents(), e);
+      logger.warn("Some agents did not shutdown within {}: {}", timeout, agentGroup.getSpawnedAgents(), e);
     }
   }
 

@@ -34,6 +34,8 @@ import org.zeroturnaround.process.PidUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -142,6 +144,7 @@ public class RemoteClientManager {
       logger.info("Spawned client with PID {}", id.getPid());
       return id;
     } catch (IOException | InterruptedException e) {
+      logger.error("Error spawning client {}", instanceId, e);
       throw Exceptions.asRuntime("Error spawning client " + instanceId, e);
     }
   }
@@ -157,12 +160,26 @@ public class RemoteClientManager {
     }
 
     String agentClassName = Agent.class.getName().replace('.', '/');
-    String agentClassPath = Agent.class.getResource("/" + agentClassName + ".class").getPath();
-
-    if (agentClassPath.startsWith("file:")) {
-      sb.append(agentClassPath, "file:".length(), agentClassPath.lastIndexOf('!'));
+    URL agentUrl = Agent.class.getResource("/" + agentClassName + ".class");
+    if (agentUrl != null) {
+      String agentPath;
+      if (agentUrl.getProtocol().equals("jar")) {
+        agentPath = agentUrl.getPath();
+        agentPath = agentPath.substring(0, agentPath.lastIndexOf('!'));
+        if (agentPath.startsWith("file:")) {
+          agentPath = new File(URI.create(agentPath)).toPath().toAbsolutePath().toString();
+          sb.append(agentPath);
+        } else {
+          logger.error("Unexpected location for Agent.class; omitting from classpath: {}", agentUrl);
+        }
+      } else if (agentUrl.getProtocol().equals("file")) {
+        agentPath = new File(agentUrl.toString()).toPath().toAbsolutePath().toString();
+        sb.append(agentPath);
+      } else {
+        logger.error("Unexpected location for Agent.class; omitting from classpath: {}", agentUrl);
+      }
     } else {
-      sb.append(agentClassPath, 0, agentClassPath.lastIndexOf(agentClassName));
+      logger.error("Failed to determine path to Agent.class; omitting from classpath");
     }
 
     return sb.toString();

@@ -571,6 +571,7 @@ public class AgentController {
         ProcessUtil.destroyGracefullyOrForcefullyAndWait(pid);
       }
     } catch (Exception e) {
+      logger.error("Error stopping client {}", instanceId, e);
       throw new RuntimeException("Error stopping client " + instanceId, e);
     }
   }
@@ -578,7 +579,12 @@ public class AgentController {
   public void deleteClient(InstanceId instanceId) {
     Path subAgentRoot = new RemoteClientManager(instanceId).getClientInstallationPath();
     logger.debug("[{}] Cleaning up directory structure '{}' of client {}", localAgentID, subAgentRoot, instanceId);
-    FileUtils.deleteTree(subAgentRoot);
+    try {
+      FileUtils.deleteTree(subAgentRoot);
+      logger.debug("[{}] Completed cleanup of directory structure '{}' of client {}", localAgentID, subAgentRoot, instanceId);
+    } catch (UncheckedIOException e) {
+      logger.warn("Failed to deleteTree \"{}\"", subAgentRoot, e);
+    }
   }
 
   public String instanceWorkDir(InstanceId instanceId) {

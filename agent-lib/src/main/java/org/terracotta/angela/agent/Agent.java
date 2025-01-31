@@ -76,6 +76,7 @@ public class Agent implements AutoCloseable {
 
     ROOT_DIR = Paths.get(getEitherOf(AngelaProperties.ROOT_DIR, AngelaProperties.KITS_DIR));
     if (!ROOT_DIR.isAbsolute()) {
+      logger.error("Expected ROOT_DIR to be an absolute path, got: {}", ROOT_DIR);
       throw new IllegalArgumentException("Expected ROOT_DIR to be an absolute path, got: " + ROOT_DIR);
     }
     WORK_DIR = ROOT_DIR.resolve("work");
@@ -126,11 +127,13 @@ public class Agent implements AutoCloseable {
   public static void main(String[] args) {
     final String instanceName = System.getProperty("angela.instanceName");
     if (instanceName == null) {
+      logger.error("angela.instanceName is missing");
       throw new AssertionError("angela.instanceName is missing");
     }
 
     final String group = System.getProperty("angela.group");
     if (group == null) {
+      logger.error("angela.group is missing");
       throw new AssertionError("angela.group is missing");
     }
 
@@ -247,6 +250,7 @@ public class Agent implements AutoCloseable {
     try {
       ignite = Ignition.start(cfg);
     } catch (IgniteException e) {
+      logger.error("Error starting node {}", cfg, e);
       throw new RuntimeException("Error starting node " + agentID, e);
     }
 

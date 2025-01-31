@@ -16,7 +16,6 @@
  */
 package org.terracotta.angela;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.terracotta.angela.client.Client;
 import org.terracotta.angela.client.ClientArray;
@@ -51,7 +50,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -78,13 +76,6 @@ import static org.terracotta.angela.common.topology.Version.version;
 import static org.terracotta.angela.util.TestUtils.TC_CONFIG_A;
 
 public class ClientIT extends BaseIT {
-  
-  @BeforeClass
-  public static void failsOnWindows() {
-    System.out.format("os.name=%s; java.version=%s%n", System.getProperty("os.name"), System.getProperty("java.version"));
-    boolean isWindows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("win");
-    assumeFalse("Client classpath issues on Windows", isWindows);
-  }
 
   public ClientIT(String mode, String hostname, boolean inline, boolean ssh) {
     super(mode, hostname, inline, ssh);
