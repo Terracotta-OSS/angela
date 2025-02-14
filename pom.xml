@@ -48,7 +48,7 @@
     <terracotta-utilities.range.version>[${terracotta-utilities.base.version},)</terracotta-utilities.range.version>
 
     <!-- Third-party dependencies -->
-    <ignite.version>2.15.0</ignite.version>
+    <ignite.version>2.17.0</ignite.version>
     <json-path.version>4.3.1</json-path.version>
     <hamcrest.version>1.3</hamcrest.version>
     <junit.version>4.12</junit.version>
