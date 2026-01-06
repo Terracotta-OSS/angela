@@ -31,16 +31,35 @@ public class IpUtils {
 
   // caches costly resolutions and also what angela has to consider being "local" in order to not trigger an SSH remote installation
   static {
+    InetAddress localAddress = null;
+    String hostname;
     try {
-      LOCAL_HOSTNAME = InetAddress.getLocalHost().getHostName();
-      LOCAL_HOSTNAMES.add(LOCAL_HOSTNAME);
-      LOCAL_HOSTNAMES.add(InetAddress.getLocalHost().getHostAddress());
-      LOCAL_HOSTNAMES.add("localhost");
-      LOCAL_HOSTNAMES.add("127.0.0.1");
-      LOCAL_HOSTNAMES.add("::1");
+      localAddress = InetAddress.getLocalHost();
+      hostname = localAddress.getHostName();
     } catch (UnknownHostException ex) {
-      throw new IllegalStateException(ex);
+      hostname = resolveFallbackHostname();
     }
+
+    LOCAL_HOSTNAME = hostname;
+    LOCAL_HOSTNAMES.add(LOCAL_HOSTNAME);
+    if (localAddress != null) {
+      LOCAL_HOSTNAMES.add(localAddress.getHostAddress());
+    }
+    LOCAL_HOSTNAMES.add("localhost");
+    LOCAL_HOSTNAMES.add("127.0.0.1");
+    LOCAL_HOSTNAMES.add("::1");
+  }
+
+  private static String resolveFallbackHostname() {
+    String envHost = System.getenv("HOSTNAME");
+    if (envHost != null && !envHost.trim().isEmpty()) {
+      return envHost.trim();
+    }
+    envHost = System.getenv("COMPUTERNAME");
+    if (envHost != null && !envHost.trim().isEmpty()) {
+      return envHost.trim();
+    }
+    return "localhost";
   }
 
   /**

@@ -24,6 +24,7 @@ import org.terracotta.angela.client.config.TmsConfigurationContext;
 import org.terracotta.angela.client.config.ToolConfigurationContext;
 import org.terracotta.angela.client.config.TsaConfigurationContext;
 import org.terracotta.angela.client.config.VoterConfigurationContext;
+import org.terracotta.angela.client.config.WebMIsConfigurationContext;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ public class CustomConfigurationContext implements ConfigurationContext {
   private CustomClusterToolConfigurationContext customClusterToolConfigurationContext;
   private CustomImportToolConfigurationContext customImportToolConfigurationContext;
   private CustomConfigToolConfigurationContext customConfigToolConfigurationContext;
+  private CustomWebMIsConfigurationContext customWebMIsConfigurationContext;
 
   public static CustomConfigurationContext customConfigurationContext() {
     return new CustomConfigurationContext();
@@ -191,4 +193,23 @@ public class CustomConfigurationContext implements ConfigurationContext {
     consumer.accept(customMonitoringConfigurationContext);
     return this;
   }
+
+  public WebMIsConfigurationContext webMIs() {
+    return this.customWebMIsConfigurationContext;
+  }
+
+  public CustomConfigurationContext webMIs(Consumer<CustomWebMIsConfigurationContext> is) {
+    if (this.customWebMIsConfigurationContext != null) {
+      throw new IllegalStateException("TSA config already defined");
+    } else {
+      this.customWebMIsConfigurationContext = new CustomWebMIsConfigurationContext();
+      is.accept(this.customWebMIsConfigurationContext);
+      if (this.customWebMIsConfigurationContext.getTopology() == null) {
+        throw new IllegalArgumentException("You added an Is to the Configuration but did not define its topology");
+      } else {
+        return this;
+      }
+    }
+  }
+
 }

@@ -25,7 +25,7 @@ import org.terracotta.angela.agent.com.IgniteFreeExecutor;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.util.HostPort;
 import org.terracotta.angela.common.util.IpUtils;
-import org.zeroturnaround.process.PidUtil;
+import org.terracotta.angela.common.util.Pids;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -50,7 +50,7 @@ public class AgentIT {
          Executor executor = new IgniteFreeExecutor(agent)) {
       final AgentID agentID = agent.getAgentID();
       assertTrue(agentID.isLocal());
-      assertEquals("local#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#0", agentID.toString());
+      assertEquals("local#" + Pids.current() + "@" + IpUtils.getHostName() + "#0", agentID.toString());
       assertEquals(1, executor.getGroup().size());
     }
   }
@@ -71,8 +71,8 @@ public class AgentIT {
       assertFalse(agentID1.isLocal());
       assertFalse(agentID2.isLocal());
 
-      assertEquals(Agent.AGENT_TYPE_ORCHESTRATOR + "#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#" + port1, agentID1.toString());
-      assertEquals("client-job#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#" + port2, agentID2.toString());
+      assertEquals(Agent.AGENT_TYPE_ORCHESTRATOR + "#" + Pids.current() + "@" + IpUtils.getHostName() + "#" + port1, agentID1.toString());
+      assertEquals("client-job#" + Pids.current() + "@" + IpUtils.getHostName() + "#" + port2, agentID2.toString());
 
       final Collection<AgentID> nodes = agent1.getIgnite().cluster().forAttribute("angela.group", agent1.getGroupId().toString()).nodes()
           .stream()

@@ -19,6 +19,7 @@ package org.terracotta.angela.util;
 import org.apache.sshd.common.file.nativefs.NativeFileSystemFactory;
 import org.apache.sshd.server.auth.pubkey.AcceptAllPublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
+import org.apache.sshd.scp.server.ScpCommandFactory;
 import org.apache.sshd.server.shell.InteractiveProcessShellFactory;
 import org.apache.sshd.server.shell.ProcessShellCommandFactory;
 import org.apache.sshd.sftp.server.SftpSubsystemFactory;
@@ -66,7 +67,9 @@ public class SshServer implements Closeable {
       sshd.setPort(port);
       sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(root.resolve("hostkey.ser")));
       sshd.setSubsystemFactories(singletonList(new SftpSubsystemFactory.Builder().build()));
-      sshd.setCommandFactory(new ProcessShellCommandFactory());
+      sshd.setCommandFactory(new ScpCommandFactory.Builder()
+          .withDelegate(new ProcessShellCommandFactory())
+          .build());
       sshd.setPublickeyAuthenticator(AcceptAllPublickeyAuthenticator.INSTANCE);
       sshd.setShellFactory(new InteractiveProcessShellFactory());
       sshd.start();

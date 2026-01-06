@@ -20,7 +20,8 @@ import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 import org.zeroturnaround.exec.StartedProcess;
 import org.zeroturnaround.exec.listener.ProcessListener;
-import org.zeroturnaround.process.PidUtil;
+
+import static org.terracotta.angela.common.util.Pids.of;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 class WatchedProcess<S extends Enum<S>> {
 
   private final StartedProcess startedProcess;
-  private final int pid;
+  private final long pid;
 
   public WatchedProcess(ProcessExecutor processExecutor, final AtomicReference<S> stateRef, final S deadState) {
     processExecutor.addListener(new ProcessListener() {
@@ -49,14 +50,14 @@ class WatchedProcess<S extends Enum<S>> {
     } catch (IOException e) {
       throw new RuntimeException("Cannot start process " + processExecutor.getCommand(), e);
     }
-    this.pid = PidUtil.getPid(startedProcess.getProcess());
+    this.pid = of(startedProcess.getProcess());
   }
 
   public boolean isAlive() {
     return startedProcess.getProcess().isAlive();
   }
 
-  public int getPid() {
+  public long getPid() {
     return pid;
   }
 }

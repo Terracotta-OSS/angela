@@ -29,7 +29,7 @@ import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.IpUtils;
-import org.zeroturnaround.process.PidUtil;
+import org.terracotta.angela.common.util.Pids;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -73,7 +73,7 @@ public class IgniteLocalExecutorIT {
 
   @Test
   public void testGetLocalAgentID() {
-    assertEquals(Agent.AGENT_TYPE_ORCHESTRATOR + "#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#" + agentID.getPort(), executor.getLocalAgentID().toString());
+    assertEquals(Agent.AGENT_TYPE_ORCHESTRATOR + "#" + Pids.current() + "@" + IpUtils.getHostName() + "#" + agentID.getPort(), executor.getLocalAgentID().toString());
   }
 
   @Test

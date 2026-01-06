@@ -47,6 +47,11 @@
     <terracotta-utilities.base.version>0.0.19</terracotta-utilities.base.version>
     <terracotta-utilities.range.version>[${terracotta-utilities.base.version},)</terracotta-utilities.range.version>
     <java.build.version>1.11</java.build.version>
+    <java.release.version>11</java.release.version>
+    <java.toolchain.version>1.11</java.toolchain.version>
+    <java.test.version>1.11</java.test.version>
+    <maven.compiler.release>${java.release.version}</maven.compiler.release>
+
 
     <!-- Third-party dependencies -->
     <ignite.version>2.17.0</ignite.version>
@@ -58,17 +63,15 @@
     <sshj.version>0.32.0</sshj.version>
     <awaitility.version>4.0.3</awaitility.version>
     <commons-io.version>2.7</commons-io.version>
+    <commons-lang3.version>3.19.0</commons-lang3.version>
     <commons-compress.version>1.20</commons-compress.version>
-    <zt-process-killer.version>1.10</zt-process-killer.version>
+    <zt-process-killer.version>1.11</zt-process-killer.version>
     <zt-exec.version>1.12</zt-exec.version>
     <logback-classic.base.version>1.2.11</logback-classic.base.version>
     <logback-classic.range.version>[${logback-classic.base.version},1.2.9999)</logback-classic.range.version>
     <netcrusher-core.version>0.10</netcrusher-core.version>
     <jaxb-runtime.version>2.3.3</jaxb-runtime.version>
     <jna.version>5.9.0</jna.version>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-    <maven.compiler.release>11</maven.compiler.release>
   </properties>
 
   <modules>
@@ -257,6 +260,11 @@
         <version>${commons-io.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
+      </dependency>
+      <dependency>
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
         <version>${logback-classic.range.version}</version>
@@ -301,6 +309,23 @@
       <plugins>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>${java.release.version}</source>
+            <target>${java.release.version}</target>
+            <showWarnings>true</showWarnings>
+            <showDeprecation>true</showDeprecation>
+            <failOnWarning>true</failOnWarning>
+            <compilerArgs>
+              <arg>-Xlint:all</arg>
+              <!-- -path is required because of the class-path manifest entries generated (jars won't be found) -->
+              <arg>-Xlint:-path</arg>
+              <arg>-Werror</arg>
+            </compilerArgs>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
           <version>3.2.4</version>
         </plugin>
@@ -332,7 +357,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.14.0</version>
         <configuration>
-          <release>11</release>
+          <release>${java.release.version}</release>
           <showWarnings>true</showWarnings>
           <showDeprecation>true</showDeprecation>
           <failOnWarning>true</failOnWarning>
@@ -364,7 +389,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-toolchains-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.1.0</version>
         <executions>
           <execution>
             <goals>
@@ -375,7 +400,7 @@
         <configuration>
           <toolchains>
             <jdk>
-               <version>1.11</version>
+               <version>${java.toolchain.version}</version>
             </jdk>
           </toolchains>
         </configuration>
@@ -389,8 +414,9 @@
             <angela.rootDir>${project.build.directory}/angela</angela.rootDir>
           </systemPropertyVariables>
           <jdkToolchain>
-            <version>1.11</version>
+            <version>${java.toolchain.version}</version>
           </jdkToolchain>
+          <argLine>-Xint</argLine>
           <useSystemClassLoader>false</useSystemClassLoader>
           <forkCount>1</forkCount>
           <reuseForks>true</reuseForks>
@@ -400,7 +426,7 @@
       <plugin>
         <groupId>com.github.spotbugs</groupId>
         <artifactId>spotbugs-maven-plugin</artifactId>
-        <version>4.0.0</version>
+        <version>4.8.6.7</version>
         <configuration>
           <skip>true</skip>
         </configuration>
@@ -417,6 +443,20 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>java-17-toolchain</id>
+      <activation>
+        <property>
+          <name>java.build.version</name>
+          <value>1.17</value>
+        </property>
+      </activation>
+      <properties>
+        <java.release.version>17</java.release.version>
+        <java.toolchain.version>1.17</java.toolchain.version>
+        <java.test.version>1.17</java.test.version>
+      </properties>
+    </profile>
     <!-- default profile including toolchain, javadoc, findbugs, license check, enforcer, etc -->
     <profile>
       <id>default</id>
@@ -447,9 +487,13 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.1.1</version>
+            <version>3.12.0</version>
             <configuration>
               <quiet>true</quiet>
+              <release>${java.release.version}</release>
+              <jdkToolchain>
+                <version>${java.toolchain.version}</version>
+              </jdkToolchain>
             </configuration>
             <executions>
               <execution>

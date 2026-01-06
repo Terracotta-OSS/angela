@@ -16,34 +16,69 @@
  */
 package org.terracotta.angela.common.metrics;
 
+import org.terracotta.angela.common.util.OS;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Supplier;
+
 public enum HardwareMetric {
 
-    CPU(new MonitoringCommand("mpstat",
-        "-P", // Specify the processors
-        "ALL", // Specify ALL processors - duh!
-        "10")),
-    DISK(new MonitoringCommand( "iostat",
-        "-h", // Human-readable output
-        "-d", // Record stats for disks
-        "10")),
-    MEMORY(new MonitoringCommand("free",
-        "-h", // Human-readable output
-        "-s", // Specify collection time in seconds
-        "10" )),
-    NETWORK(new MonitoringCommand("sar",
-        "-n", // Specify network statistics
-        "DEV", // Observe traffic on interfaces
-        "10")),
+    CPU(HardwareMetric::defaultCpuCommand),
+    DISK(HardwareMetric::defaultDiskCommand),
+    MEMORY(HardwareMetric::defaultMemoryCommand),
+    NETWORK(HardwareMetric::defaultNetworkCommand),
     ;
 
-    private final MonitoringCommand defaultMonitoringCommand;
+    private final Supplier<MonitoringCommand> defaultCommandSupplier;
 
-    HardwareMetric(MonitoringCommand defaultMonitoringCommand) {
-        this.defaultMonitoringCommand = defaultMonitoringCommand;
+    HardwareMetric(Supplier<MonitoringCommand> defaultCommandSupplier) {
+        this.defaultCommandSupplier = defaultCommandSupplier;
     }
 
     public MonitoringCommand getDefaultMonitoringCommand() {
-        return defaultMonitoringCommand;
+        return defaultCommandSupplier.get();
     }
 
+    private static MonitoringCommand defaultCpuCommand() {
+        if (OS.INSTANCE.isWindows()) {
+            return windowsTypeperf(2, "\\Processor(_Total)\\% Processor Time");
+        }
+        return new MonitoringCommand("mpstat", "-P", "ALL", "10");
+    }
+
+    private static MonitoringCommand defaultDiskCommand() {
+        if (OS.INSTANCE.isWindows()) {
+            return windowsTypeperf(10, "\\PhysicalDisk(_Total)\\Disk Transfers/sec");
+        }
+        return new MonitoringCommand("iostat", "-h", "-d", "10");
+    }
+
+    private static MonitoringCommand defaultMemoryCommand() {
+        if (OS.INSTANCE.isWindows()) {
+            return windowsTypeperf(10, "\\Memory\\Available MBytes", "\\Memory\\Committed Bytes");
+        }
+        if (OS.INSTANCE.isMac()) {
+            return new MonitoringCommand("vm_stat", "10");
+        }
+        return new MonitoringCommand("free", "-h", "-s", "10");
+    }
+
+    private static MonitoringCommand defaultNetworkCommand() {
+        if (OS.INSTANCE.isWindows()) {
+            return windowsTypeperf(10, "\\Network Interface(*)\\Bytes Total/sec");
+        }
+        return new MonitoringCommand("sar", "-n", "DEV", "10");
+    }
+
+    private static MonitoringCommand windowsTypeperf(int intervalSeconds, String... counters) {
+        List<String> args = new ArrayList<>();
+        args.add("typeperf");
+        args.addAll(Arrays.asList(counters));
+        args.add("-si");
+        args.add(Integer.toString(intervalSeconds));
+        args.add("-y");
+        return new MonitoringCommand(args);
+    }
 }

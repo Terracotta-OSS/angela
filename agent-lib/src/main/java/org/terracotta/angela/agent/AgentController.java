@@ -29,6 +29,7 @@ import org.terracotta.angela.agent.kit.TerracottaInstall;
 import org.terracotta.angela.agent.kit.TmsInstall;
 import org.terracotta.angela.agent.kit.ToolInstall;
 import org.terracotta.angela.agent.kit.VoterInstall;
+import org.terracotta.angela.agent.kit.WebMIsInstall;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.TerracottaManagementServerInstance;
 import org.terracotta.angela.common.TerracottaManagementServerState;
@@ -39,6 +40,8 @@ import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance;
 import org.terracotta.angela.common.TerracottaVoterState;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.WebMIsServerInstance;
+import org.terracotta.angela.common.WebMIsServerState;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.distribution.DistributionController;
 import org.terracotta.angela.common.metrics.HardwareMetric;
@@ -91,6 +94,7 @@ public class AgentController {
   private final Map<InstanceId, VoterInstall> voterInstalls = new HashMap<>();
   private final Map<InstanceId, ToolInstall> clusterToolInstalls = new HashMap<>();
   private final Map<InstanceId, ToolInstall> configToolInstalls = new HashMap<>();
+  private final Map<InstanceId, WebMIsInstall> webMIsInstalls = new HashMap<>();
   private final Map<InstanceId, ToolInstall> importToolInstalls = new HashMap<>();
 
   private final AgentID localAgentID;
@@ -328,7 +332,7 @@ public class AgentController {
 
   public int startTms(InstanceId instanceId, Map<String, String> envOverrides) {
     TerracottaManagementServerInstance serverInstance = tmsInstalls.get(instanceId)
-        .getTerracottaManagementServerInstance();
+            .getTerracottaManagementServerInstance();
     int port = portAllocator.reserve(1).next();
     envOverrides = new LinkedHashMap<>(envOverrides);
     envOverrides.put("SERVER_PORT", String.valueOf(port));
@@ -338,7 +342,7 @@ public class AgentController {
 
   public void stopTms(InstanceId instanceId) {
     TerracottaManagementServerInstance serverInstance = tmsInstalls.get(instanceId)
-        .getTerracottaManagementServerInstance();
+            .getTerracottaManagementServerInstance();
     serverInstance.stop();
   }
 
@@ -358,6 +362,19 @@ public class AgentController {
     }
     return serverInstance.getTerracottaManagementServerState();
   }
+
+  public void startWebMIs(InstanceId instanceId) {
+    WebMIsServerInstance serverInstance = webMIsInstalls.get(instanceId)
+            .getWebMIsServerInstance();
+    serverInstance.start();
+  }
+
+  public void stopWebMIs(InstanceId instanceId) {
+    WebMIsServerInstance serverInstance = webMIsInstalls.get(instanceId)
+            .getWebMIsServerInstance();
+    serverInstance.stop();
+  }
+
 
   public void uninstallTsa(InstanceId instanceId, Topology topology, TerracottaServer terracottaServer, String kitInstallationName, String kitInstallationPath) {
     TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
@@ -500,6 +517,48 @@ public class AgentController {
     return serverInstance.getTerracottaServerState();
   }
 
+  public WebMIsServerState getWebMIsState(InstanceId instanceId) {
+    WebMIsInstall webMIsInstall = webMIsInstalls.get(instanceId);
+    if (webMIsInstall == null) {
+      return WebMIsServerState.NOT_INSTALLED;
+    }
+    WebMIsServerInstance serverInstance = webMIsInstall.getWebMIsServerInstance();
+    if (serverInstance == null) {
+      return WebMIsServerState.NOT_INSTALLED;
+    }
+    return serverInstance.getWebMIsServerState();
+  }
+
+  public boolean installWebMIs(InstanceId instanceId, String hostname, Distribution distribution, License license, String kitInstallationName, TerracottaCommandLineEnvironment tcEnv) {
+    WebMIsInstall webMIsInstall = webMIsInstalls.get(instanceId);
+    if (webMIsInstall != null) {
+      logger.debug("Kit for " + hostname + " already installed");
+      webMIsInstall.addWebMIsServer();
+      return true;
+    } else {
+      Optional<Dirs> dirs = Dirs.discover(instanceId, hostname, distribution, license, kitInstallationName, null);
+      if (!dirs.isPresent()) {
+        return false;
+      }
+      webMIsInstalls.put(instanceId, new WebMIsInstall(distribution, dirs.get().kitDir, dirs.get().workingDir, tcEnv));
+      return true;
+    }
+  }
+
+  public void uninstallWebMIs(InstanceId instanceId, String hostname, Distribution distribution, License license, String kitInstallationName, TerracottaCommandLineEnvironment tcEnv) {
+    WebMIsInstall webMIsInstall = webMIsInstalls.get(instanceId);
+    if (webMIsInstall != null) {
+      webMIsInstall.removeServer();
+      webMIsInstalls.remove(instanceId);
+      File installLocation = webMIsInstall.getWorkingDir();
+      logger.debug("[{}] Uninstalling kit(s) from {} for WebMEthods IS", localAgentID, installLocation);
+      RemoteKitManager kitManager = new RemoteKitManager(instanceId, distribution, kitInstallationName);
+      kitManager.deleteInstall(installLocation);
+    } else {
+      logger.debug("[{}] No installed kit for " + hostname, localAgentID);
+    }
+  }
+
   public Map<ServerSymbolicName, Integer> getProxyGroupPortsForServer(InstanceId instanceId, TerracottaServer terracottaServer) {
     TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     if (terracottaInstall == null) {
@@ -544,7 +603,7 @@ public class AgentController {
 
   public void startVoter(InstanceId instanceId, TerracottaVoter terracottaVoter, Map<String, String> envOverrides) {
     TerracottaVoterInstance terracottaVoterInstance = voterInstalls.get(instanceId)
-        .getTerracottaVoterInstance(terracottaVoter);
+            .getTerracottaVoterInstance(terracottaVoter);
     terracottaVoterInstance.start(envOverrides);
   }
 
@@ -580,14 +639,14 @@ public class AgentController {
   public ToolExecutionResult serverJcmd(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
     TerracottaServerState tsaState = getTsaState(instanceId, terracottaServer);
     if (!EnumSet.of(TerracottaServerState.STARTED_AS_ACTIVE, TerracottaServerState.STARTED_AS_PASSIVE)
-        .contains(tsaState)) {
+            .contains(tsaState)) {
       throw new IllegalStateException("Cannot control jcmd: server " + terracottaServer.getServerSymbolicName() + " has not started");
     }
     TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);
     return terracottaInstall.getTerracottaServerInstance(terracottaServer).jcmd(tcEnv, arguments);
   }
 
-  public ToolExecutionResult clientJcmd(int clientPid, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
+  public ToolExecutionResult clientJcmd(long clientPid, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
     return Jcmd.jcmd(clientPid, tcEnv, arguments);
   }
 
@@ -617,7 +676,7 @@ public class AgentController {
     }
   }
 
-  public void stopClient(InstanceId instanceId, int pid) {
+  public void stopClient(InstanceId instanceId, long pid) {
     try {
       logger.info("[{}] killing client '{}' with PID {}", localAgentID, instanceId, pid);
       if (!localAgentID.isLocal()) {
@@ -759,9 +818,9 @@ public class AgentController {
         throw new UncheckedIOException(e);
       }
       return Optional.of(new Dirs(
-          kitPath,
-          workingPath.toFile(),
-          null
+              kitPath,
+              workingPath.toFile(),
+              null
       ));
     }
   }

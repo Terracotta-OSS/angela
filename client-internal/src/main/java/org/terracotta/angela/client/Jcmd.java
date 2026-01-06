@@ -62,7 +62,7 @@ public class Jcmd {
 
     } else if (client != null) {
       final AgentID agentID = executor.getAgentID(client.getHostName());
-      final int pid = client.getPid();
+      final long pid = client.getPid();
       return executor.execute(agentID, () -> AgentController.getInstance().clientJcmd(pid, tcEnv, arguments));
 
     } else {

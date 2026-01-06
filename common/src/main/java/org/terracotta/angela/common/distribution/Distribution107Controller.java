@@ -27,6 +27,8 @@ import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.TerracottaVoterState;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.WebMIsServerInstance;
+import org.terracotta.angela.common.WebMIsServerState;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
@@ -36,6 +38,7 @@ import org.terracotta.angela.common.topology.PackageType;
 import org.terracotta.angela.common.topology.Topology;
 import org.terracotta.angela.common.util.ActivityTracker;
 import org.terracotta.angela.common.util.ExternalLoggers;
+import org.terracotta.angela.common.util.FileTailer;
 import org.terracotta.angela.common.util.HostPort;
 import org.terracotta.angela.common.util.OS;
 import org.terracotta.angela.common.util.ProcessUtil;
@@ -58,6 +61,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -73,6 +77,7 @@ import static java.util.regex.Pattern.compile;
 import static org.terracotta.angela.common.AngelaProperties.TMS_FULL_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.TSA_FULL_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.VOTER_FULL_LOGGING;
+
 
 public class Distribution107Controller extends DistributionController {
   private final static Logger LOGGER = LoggerFactory.getLogger(Distribution107Controller.class);
@@ -95,24 +100,24 @@ public class Distribution107Controller extends DistributionController {
     AtomicInteger javaPid = new AtomicInteger(-1);
 
     TriggeringOutputStream serverLogOutputStream = TriggeringOutputStream
-        .triggerOn(
-            compile("^.*\\QStarted the server in diagnostic mode\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.STARTED_IN_DIAGNOSTIC_MODE))
-        .andTriggerOn(
-            compile("^.*\\QTerracotta Server instance has started up as ACTIVE\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.STARTED_AS_ACTIVE))
-        .andTriggerOn(
-            compile("^.*\\QMoved to State[ PASSIVE-STANDBY ]\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.STARTED_AS_PASSIVE))
-        .andTriggerOn(
-            compile("^.*\\QMOVE_TO_ACTIVE not allowed because not enough servers are connected\\E.*$"),
-            mr -> stateRef.set(TerracottaServerState.START_SUSPENDED))
-        .andTriggerOn(
-            compile("^.*PID is (\\d+).*$"),
-            mr -> {
-              javaPid.set(parseInt(mr.group(1)));
-              stateRef.compareAndSet(TerracottaServerState.STOPPED, TerracottaServerState.STARTING);
-            });
+            .triggerOn(
+                    compile("^.*\\QStarted the server in diagnostic mode\\E.*$"),
+                    mr -> stateRef.set(TerracottaServerState.STARTED_IN_DIAGNOSTIC_MODE))
+            .andTriggerOn(
+                    compile("^.*\\QTerracotta Server instance has started up as ACTIVE\\E.*$"),
+                    mr -> stateRef.set(TerracottaServerState.STARTED_AS_ACTIVE))
+            .andTriggerOn(
+                    compile("^.*\\QMoved to State[ PASSIVE-STANDBY ]\\E.*$"),
+                    mr -> stateRef.set(TerracottaServerState.STARTED_AS_PASSIVE))
+            .andTriggerOn(
+                    compile("^.*\\QMOVE_TO_ACTIVE not allowed because not enough servers are connected\\E.*$"),
+                    mr -> stateRef.set(TerracottaServerState.START_SUSPENDED))
+            .andTriggerOn(
+                    compile("^.*PID is (\\d+).*$"),
+                    mr -> {
+                      javaPid.set(parseInt(mr.group(1)));
+                      stateRef.compareAndSet(TerracottaServerState.STOPPED, TerracottaServerState.STARTING);
+                    });
 
     final AtomicReference<OutputStream> stdout = new AtomicReference<>();
     try {
@@ -129,21 +134,21 @@ public class Distribution107Controller extends DistributionController {
     } catch (IOException io) {
       LOGGER.warn("failed to create stdout file", io);
       serverLogOutputStream = tsaFullLogging ?
-          serverLogOutputStream.andForward(line -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), line)) :
-          serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
+              serverLogOutputStream.andForward(line -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), line)) :
+              serverLogOutputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tsaLogger.info("[{}] {}", terracottaServer.getServerSymbolicName().getSymbolicName(), mr.group()));
     }
 
     final ActivityTracker activityTracker = ActivityTracker.of(inactivityKillerDelay);
 
     WatchedProcess<TerracottaServerState> watchedProcess = new WatchedProcess<>(
-        new ProcessExecutor()
-            .command(createTsaCommand(terracottaServer, kitDir, workingDir, startUpArgs))
-            .directory(workingDir)
-            .environment(env)
-            .redirectErrorStream(true)
-            .redirectOutput(new TrackedOutputStream(activityTracker, serverLogOutputStream)),
-        stateRef,
-        TerracottaServerState.STOPPED);
+            new ProcessExecutor()
+                    .command(createTsaCommand(terracottaServer, kitDir, workingDir, startUpArgs))
+                    .directory(workingDir)
+                    .environment(env)
+                    .redirectErrorStream(true)
+                    .redirectOutput(new TrackedOutputStream(activityTracker, serverLogOutputStream)),
+            stateRef,
+            TerracottaServerState.STOPPED);
 
     activityTracker.start();
 
@@ -190,13 +195,13 @@ public class Distribution107Controller extends DistributionController {
         final int maxWaitTimeMillis = 30000;
         if (!RetryUtils.waitFor(() -> getState() == TerracottaServerState.STOPPED, maxWaitTimeMillis)) {
           throw new RuntimeException(
-              String.format(
-                  "Tried for %dms, but server %s did not get the state %s [remained at state %s]",
-                  maxWaitTimeMillis,
-                  terracottaServer.getServerSymbolicName().getSymbolicName(),
-                  TerracottaServerState.STOPPED,
-                  getState()
-              )
+                  String.format(
+                          "Tried for %dms, but server %s did not get the state %s [remained at state %s]",
+                          maxWaitTimeMillis,
+                          terracottaServer.getServerSymbolicName().getSymbolicName(),
+                          TerracottaServerState.STOPPED,
+                          getState()
+                  )
           );
         }
         if (stdout.get() != null) {
@@ -228,22 +233,22 @@ public class Distribution107Controller extends DistributionController {
     AtomicInteger javaPid = new AtomicInteger(-1);
 
     TriggeringOutputStream outputStream = TriggeringOutputStream
-        .triggerOn(
-            compile("^.*\\Qstarted on port\\E.*$"),
-            mr -> stateRef.set(TerracottaManagementServerState.STARTED))
-        .andTriggerOn(
-            compile("^.*\\QStarting TmsApplication\\E.*with PID (\\d+).*$"),
-            mr -> javaPid.set(parseInt(mr.group(1))));
+            .triggerOn(
+                    compile("^.*\\Qstarted on port\\E.*$"),
+                    mr -> stateRef.set(TerracottaManagementServerState.STARTED))
+            .andTriggerOn(
+                    compile("^.*\\QStarting TmsApplication\\E.*with PID (\\d+).*$"),
+                    mr -> javaPid.set(parseInt(mr.group(1))));
     outputStream = tmsFullLogging ?
-        outputStream.andForward(ExternalLoggers.tmsLogger::info) :
-        outputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tmsLogger.info(mr.group()));
+            outputStream.andForward(ExternalLoggers.tmsLogger::info) :
+            outputStream.andTriggerOn(compile("^.*(WARN|ERROR).*$"), mr -> ExternalLoggers.tmsLogger.info(mr.group()));
 
     WatchedProcess<TerracottaManagementServerState> watchedProcess = new WatchedProcess<>(new ProcessExecutor()
-        .command(startTmsCommand(workingDir, kitDir))
-        .directory(workingDir)
-        .environment(env)
-        .redirectErrorStream(true)
-        .redirectOutput(outputStream), stateRef, TerracottaManagementServerState.STOPPED);
+            .command(startTmsCommand(workingDir, kitDir))
+            .directory(workingDir)
+            .environment(env)
+            .redirectErrorStream(true)
+            .redirectOutput(outputStream), stateRef, TerracottaManagementServerState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaManagementServerState.STOPPED) && watchedProcess.isAlive()) {
       try {
@@ -256,7 +261,7 @@ public class Distribution107Controller extends DistributionController {
       throw new RuntimeException("TMS process died before reaching STARTED state");
     }
 
-    int wrapperPid = watchedProcess.getPid();
+    long wrapperPid = watchedProcess.getPid();
     int javaProcessPid = javaPid.get();
     return new TerracottaManagementServerInstanceProcess(stateRef, wrapperPid, javaProcessPid);
   }
@@ -284,27 +289,27 @@ public class Distribution107Controller extends DistributionController {
     AtomicInteger javaPid = new AtomicInteger(-1);
 
     TriggeringOutputStream outputStream = TriggeringOutputStream
-        .triggerOn(
-            compile("^.*PID is (\\d+).*$"),
-            mr -> {
-              javaPid.set(parseInt(mr.group(1)));
-              stateRef.compareAndSet(TerracottaVoterState.STOPPED, TerracottaVoterState.STARTED);
-            })
-        .andTriggerOn(
-            compile("^.*\\QVote owner state: ACTIVE-COORDINATOR\\E.*$"),
-            mr -> stateRef.compareAndSet(TerracottaVoterState.STARTED, TerracottaVoterState.CONNECTED_TO_ACTIVE))
-        .andTriggerOn(voterFullLogging ? compile("^.*$") : compile("^.*(WARN|ERROR).*$"),
-            mr -> ExternalLoggers.voterLogger.info("[{}] {}", terracottaVoter.getId(), mr.group()));
+            .triggerOn(
+                    compile("^.*PID is (\\d+).*$"),
+                    mr -> {
+                      javaPid.set(parseInt(mr.group(1)));
+                      stateRef.compareAndSet(TerracottaVoterState.STOPPED, TerracottaVoterState.STARTED);
+                    })
+            .andTriggerOn(
+                    compile("^.*\\QVote owner state: ACTIVE-COORDINATOR\\E.*$"),
+                    mr -> stateRef.compareAndSet(TerracottaVoterState.STARTED, TerracottaVoterState.CONNECTED_TO_ACTIVE))
+            .andTriggerOn(voterFullLogging ? compile("^.*$") : compile("^.*(WARN|ERROR).*$"),
+                    mr -> ExternalLoggers.voterLogger.info("[{}] {}", terracottaVoter.getId(), mr.group()));
 
     WatchedProcess<TerracottaVoterState> watchedProcess = new WatchedProcess<>(
-        new ProcessExecutor()
-            .command(startVoterCommand(kitDir, workingDir, securityDir, terracottaVoter))
-            .directory(workingDir)
-            .environment(env)
-            .redirectErrorStream(true)
-            .redirectOutput(outputStream),
-        stateRef,
-        TerracottaVoterState.STOPPED);
+            new ProcessExecutor()
+                    .command(startVoterCommand(kitDir, workingDir, securityDir, terracottaVoter))
+                    .directory(workingDir)
+                    .environment(env)
+                    .redirectErrorStream(true)
+                    .redirectOutput(outputStream),
+            stateRef,
+            TerracottaVoterState.STOPPED);
 
     while ((javaPid.get() == -1 || stateRef.get() == TerracottaVoterState.STOPPED) && watchedProcess.isAlive()) {
       try {
@@ -317,7 +322,7 @@ public class Distribution107Controller extends DistributionController {
       throw new RuntimeException("Voter process died before reaching STARTED state");
     }
 
-    int wrapperPid = watchedProcess.getPid();
+    long wrapperPid = watchedProcess.getPid();
     int javaProcessPid = javaPid.get();
     return new TerracottaVoterInstanceProcess(stateRef, wrapperPid, javaProcessPid);
   }
@@ -339,34 +344,23 @@ public class Distribution107Controller extends DistributionController {
                                                TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
     try {
       ProcessResult processResult = new ProcessExecutor(createClusterToolCommand(kitDir, workingDir, securityDir, arguments))
-          .directory(workingDir)
-          .environment(env.buildEnv(envOverrides))
-          .readOutput(true)
-          .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
-          .redirectErrorStream(true)
-          .execute();
+              .directory(workingDir)
+              .environment(env.buildEnv(envOverrides))
+              .readOutput(true)
+              .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.clusterToolLogger).asInfo())
+              .redirectErrorStream(true)
+              .execute();
       return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
-  
+
   @Override
-  public ToolExecutionResult invokeImportTool(File kitDir, File workingDir, SecurityRootDirectory securityDir,
-                                              TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
-    try {
-      ProcessResult processResult = new ProcessExecutor(createImportToolCommand(kitDir, workingDir, securityDir, arguments))
-          .directory(workingDir)
-          .environment(env.buildEnv(envOverrides))
-          .readOutput(true)
-          .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.importToolLogger).asInfo())
-          .redirectErrorStream(true)
-          .execute();
-      return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  public ToolExecutionResult invokeImportTool(File kitDir, File workingDir, SecurityRootDirectory securityDir, TerracottaCommandLineEnvironment env, Map<String, String> envOverrides, String... arguments) {
+    throw new UnsupportedOperationException("Import Tool is not supported in this distribution version, if you need, you need at least Terracotta 12.0 ");
   }
+
 
   @Override
   public ToolExecutionResult configureCluster(File kitDir, File workingDir, Topology topology, Map<ServerSymbolicName, Integer> proxyTsaPorts, License license, SecurityRootDirectory securityDir,
@@ -391,9 +385,9 @@ public class Distribution107Controller extends DistributionController {
   @Override
   public URI tsaUri(Collection<TerracottaServer> servers, Map<ServerSymbolicName, Integer> proxyTsaPorts) {
     return URI.create(servers
-        .stream()
-        .map(s -> new HostPort(s.getHostName(), proxyTsaPorts.getOrDefault(s.getServerSymbolicName(), s.getTsaPort())).getHostPort())
-        .collect(Collectors.joining(",", "terracotta://", "")));
+            .stream()
+            .map(s -> new HostPort(s.getHostName(), proxyTsaPorts.getOrDefault(s.getServerSymbolicName(), s.getTsaPort())).getHostPort())
+            .collect(Collectors.joining(",", "terracotta://", "")));
   }
 
   @Override
@@ -569,12 +563,12 @@ public class Distribution107Controller extends DistributionController {
     try {
       LOGGER.debug("Config tool command: {}", command);
       ProcessResult processResult = new ProcessExecutor(command)
-          .directory(workingDir)
-          .environment(env.buildEnv(envOverrides))
-          .readOutput(true)
-          .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.configToolLogger).asInfo())
-          .redirectErrorStream(true)
-          .execute();
+              .directory(workingDir)
+              .environment(env.buildEnv(envOverrides))
+              .readOutput(true)
+              .redirectOutputAlsoTo(Slf4jStream.of(ExternalLoggers.configToolLogger).asInfo())
+              .redirectErrorStream(true)
+              .execute();
       return new ToolExecutionResult(processResult.getExitValue(), processResult.getOutput().getLines());
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -617,20 +611,6 @@ public class Distribution107Controller extends DistributionController {
     LOGGER.debug("Cluster tool command: {}", command);
     return command;
   }
-  
-  List<String> createImportToolCommand(File installLocation, File workingDir, SecurityRootDirectory securityDir, String[] arguments) {
-    List<String> command = new ArrayList<>();
-    command.add(getImportToolExecutable(installLocation));
-    if (securityDir != null) {
-      Path securityDirPath = workingDir.toPath().resolve("import-tool-security-dir");
-      securityDir.createSecurityRootDirectory(securityDirPath);
-      command.add("-srd");
-      command.add(securityDirPath.toString());
-    }
-    command.addAll(Arrays.asList(arguments));
-    LOGGER.debug("Import tool command: {}", command);
-    return command;
-  }
 
   private String getConfigToolExecutable(File installLocation) {
     String execPath = "tools" + separator + "bin" + separator + "config-tool" + OS.INSTANCE.getShellExtension();
@@ -645,17 +625,6 @@ public class Distribution107Controller extends DistributionController {
 
   private String getClusterToolExecutable(File installLocation) {
     String execPath = "tools" + separator + "bin" + separator + "cluster-tool" + OS.INSTANCE.getShellExtension();
-
-    if (distribution.getPackageType() == PackageType.KIT) {
-      return installLocation.getAbsolutePath() + separator + execPath;
-    } else if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
-      return installLocation.getAbsolutePath() + separator + terracottaInstallationRoot() + separator + execPath;
-    }
-    throw new IllegalStateException("Can not define cluster tool command for distribution: " + distribution);
-  }
-  
-  private String getImportToolExecutable(File installLocation) {
-    String execPath = "tools" + separator + "bin" + separator + "import-tool" + OS.INSTANCE.getShellExtension();
 
     if (distribution.getPackageType() == PackageType.KIT) {
       return installLocation.getAbsolutePath() + separator + execPath;
@@ -719,4 +688,97 @@ public class Distribution107Controller extends DistributionController {
   public void prepareTMS(File kitDir, File workingDir, TmsServerSecurityConfig tmsServerSecurityConfig) {
     prepareTMS(new Properties(), new File(workingDir, "tms.custom.properties"), tmsServerSecurityConfig, workingDir);
   }
+
+  @Override
+  public WebMIsServerInstance.WebMIsServerInstanceProcess startWebMIs(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+    AtomicReference<WebMIsServerState> stateRef = new AtomicReference<>(WebMIsServerState.STOPPED);
+
+    TriggeringOutputStream outputStream = TriggeringOutputStream
+            .triggerOn(
+                    compile("^.*\\QInitialization completed in\\E.*$"),
+                    mr -> {
+                      stateRef.set(WebMIsServerState.STARTED);
+                    });
+
+    String serverLog = workingDir.getAbsolutePath() + File.separator + "IntegrationServer" + File.separator + "logs" + File.separator + "server.log";
+    FileTailer.tailFile(serverLog, outputStream);
+
+    WatchedProcess<WebMIsServerState> watchedProcess = new WatchedProcess<>(new ProcessExecutor()
+            .command(startWebMIsCommand(kitDir))
+            .environment(tcEnv.buildEnv(Collections.emptyMap()))
+            .redirectErrorStream(true)
+            .redirectOutput(outputStream), stateRef, WebMIsServerState.STOPPED);
+
+    while (stateRef.get() == WebMIsServerState.STOPPED) {  // && watchedProcess.isAlive() (javaPid.get() == -1 ||
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return new WebMIsServerInstance.WebMIsServerInstanceProcess(stateRef);
+  }
+
+  List<String> startWebMIsCommand(File installLocation) {
+    List<String> command = Arrays.asList(getStartWebMIsExecutable(installLocation));
+    LOGGER.info("Start WebMIs command: {}", command);
+    return command;
+  }
+
+  private String getStartWebMIsExecutable(File installLocation) {
+    String execPath = "IntegrationServer" + separator + "bin" + separator + "startup" + OS.INSTANCE.getShellExtension();
+    if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
+      return installLocation.getAbsolutePath() + separator + execPath;
+    }
+    throw new IllegalStateException("Can not define WebM IS start command for distribution: " + distribution);
+  }
+
+  @Override
+  public void stopWebMIs(WebMIsServerInstance.WebMIsServerInstanceProcess process, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+    if (process == null) {
+      return;
+    }
+
+    LOGGER.info("Calling shutdown script");
+    TriggeringOutputStream outputStream = TriggeringOutputStream
+            .triggerOn(
+                    compile("^.*\\QServer shutdown completed\\E.*$"),
+                    mr -> {
+                      process.setState(WebMIsServerState.STOPPED);
+                    });
+
+    String serverLog = workingDir.getAbsolutePath() + File.separator + "IntegrationServer" + File.separator + "logs" + File.separator + "server.log";
+    FileTailer.tailFile(serverLog, outputStream);
+
+    AtomicReference<WebMIsServerState> stateRef = new AtomicReference<>();
+    new WatchedProcess<>(new ProcessExecutor()
+            .command(stopWebMIsCommand(kitDir))
+            .environment(tcEnv.buildEnv(Collections.emptyMap()))
+            .redirectErrorStream(true)
+            .redirectOutput(outputStream), stateRef, WebMIsServerState.STOPPED);
+
+    while (process.getState() != WebMIsServerState.STOPPED) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+  }
+
+  List<String> stopWebMIsCommand(File installLocation) {
+    List<String> command = Arrays.asList(getStopWebMIsExecutable(installLocation));
+    LOGGER.info("Stop WebMIs command: {}", command);
+    return command;
+  }
+
+  private String getStopWebMIsExecutable(File installLocation) {
+    String execPath = "IntegrationServer" + separator + "bin" + separator + "shutdown" + OS.INSTANCE.getShellExtension();
+    if (distribution.getPackageType() == PackageType.SAG_INSTALLER) {
+      return installLocation.getAbsolutePath() + separator + execPath;
+    }
+    throw new IllegalStateException("Can not define WebM IS start command for distribution: " + distribution);
+  }
+
 }

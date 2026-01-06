@@ -53,6 +53,7 @@ public abstract class AgentGroup implements Serializable {
   /**
    * A combination of all Ignite agent launched for both remoting (remote agent)
    * or for running client jobs, plus the orchestrator
+   * @return collection of agents
    */
   public abstract Collection<AgentID> getAllAgents();
 
@@ -79,6 +80,7 @@ public abstract class AgentGroup implements Serializable {
   /**
    * Only the Ignite nodes started remotely to control process launching, once per hostname.
    * These are not the client agents.
+   * @return collection of remote agens IDs
    */
   public final Collection<AgentID> getRemoteAgentIDs() {
     return getAllAgents().stream()

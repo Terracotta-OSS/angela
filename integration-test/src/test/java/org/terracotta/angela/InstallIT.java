@@ -66,8 +66,8 @@ public class InstallIT extends BaseIT {
   public void testHardwareMetricsLogs() throws Exception {
     final Path resultPath = Paths.get("target", UUID.randomUUID().toString());
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_AP))))
-        .monitoring(monitoring -> monitoring.commands(EnumSet.of(HardwareMetric.DISK)));
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_AP))))
+            .monitoring(monitoring -> monitoring.commands(EnumSet.of(HardwareMetric.DISK)));
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testHardwareStatsLogs", config)) {
       Tsa tsa = factory.tsa();
@@ -90,7 +90,7 @@ public class InstallIT extends BaseIT {
     tcConfig.updateServerHost(0, hostname);
 
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig)));
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig)));
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testSsh", config)) {
       Tsa tsa = factory.tsa();
@@ -101,7 +101,7 @@ public class InstallIT extends BaseIT {
   @Test
   public void testLocalInstall() throws Exception {
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A))));
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A))));
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testLocalInstall", config)) {
       Tsa tsa = factory.tsa();
@@ -112,13 +112,13 @@ public class InstallIT extends BaseIT {
   @Test
   public void testLocalCmd() throws Exception {
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A))));
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A))));
 
     System.setProperty(KIT_COPY.getPropertyName(), "true");
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testLocalCmd", config)) {
       Tsa tsa = factory.tsa();
-      final Cmd cmd = tsa.cmd(tsa.getServer(0,0));
+      final Cmd cmd = tsa.cmd(tsa.getServer(0, 0));
       final ToolExecutionResult toolExecutionResult = cmd.executeCommand("./voter/bin/base-voter");
 
       assertThat(toolExecutionResult.getExitStatus(), is(1));
@@ -132,8 +132,8 @@ public class InstallIT extends BaseIT {
 
     try {
       CustomConfigurationContext.customConfigurationContext()
-          .tsa(tsa -> tsa.topology(topology1))
-          .tsa(tsa -> tsa.topology(topology2));
+              .tsa(tsa -> tsa.topology(topology1))
+              .tsa(tsa -> tsa.topology(topology2));
       fail("expected IllegalStateException");
     } catch (IllegalStateException ise) {
       // expected
@@ -143,8 +143,8 @@ public class InstallIT extends BaseIT {
   @Test
   public void testStopStalledServer() throws Exception {
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), getClass().getResource("/configs/tc-config-ap-consistent.xml"))))
-        );
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), getClass().getResource("/configs/tc-config-ap-consistent.xml"))))
+            );
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testStopStalledServer", config)) {
       Tsa tsa = factory.tsa();
@@ -162,8 +162,8 @@ public class InstallIT extends BaseIT {
   @Test
   public void testStartCreatedServer() throws Exception {
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A)))
-        );
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A)))
+            );
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testStartCreatedServer", config)) {
       Tsa tsa = factory.tsa();
@@ -178,8 +178,8 @@ public class InstallIT extends BaseIT {
   @Test(expected = RuntimeException.class)
   public void testServerStartUpWithArg() throws Exception {
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A)))
-        );
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig(version(EHCACHE_VERSION_XML), TC_CONFIG_A)))
+            );
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testStartCreatedServer", config)) {
       Tsa tsa = factory.tsa();
@@ -197,8 +197,8 @@ public class InstallIT extends BaseIT {
     tcConfig.updateServerHost(1, hostname);
 
     ConfigurationContext config = CustomConfigurationContext.customConfigurationContext()
-        .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig))
-        );
+            .tsa(tsa -> tsa.topology(new Topology(getOldDistribution(), tcConfig))
+            );
 
     try (ClusterFactory factory = angelaOrchestrator.newClusterFactory("InstallTest::testStopPassive", config)) {
       Tsa tsa = factory.tsa();
@@ -222,4 +222,7 @@ public class InstallIT extends BaseIT {
       await().atMost(15, SECONDS).until(() -> tsa.getState(passive), is(TerracottaServerState.STARTED_AS_ACTIVE));
     }
   }
+
+
+
 }

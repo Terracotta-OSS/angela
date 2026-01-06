@@ -17,6 +17,8 @@
 package org.terracotta.angela;
 
 import org.hamcrest.Matcher;
+import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.terracotta.angela.client.ClusterFactory;
 import org.terracotta.angela.client.ConfigTool;
@@ -26,6 +28,10 @@ import org.terracotta.angela.client.config.custom.CustomConfigurationContext;
 import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.channels.ServerSocketChannel;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 
@@ -420,7 +426,10 @@ public class DynamicClusterIT extends BaseIT {
   }
 
   @Test
+  @Ignore("Fails on Azure (Jenkins) - ipv6 tests will be moved to TcDB tests")
   public void testIpv6() throws Exception {
+    Assume.assumeTrue("IPv6 is disabled", isIpv6Enabled());
+
     CustomConfigurationContext configurationContext = customConfigurationContext()
         .tsa(tsa -> tsa
             .topology(
@@ -458,6 +467,15 @@ public class DynamicClusterIT extends BaseIT {
       configTool.activate();
       waitFor(() -> tsa.getActives().size(), is(1));
       waitFor(() -> tsa.getPassives().size(), is(1));
+    }
+  }
+
+  private boolean isIpv6Enabled() {
+    try (ServerSocketChannel channel = ServerSocketChannel.open()) {
+      channel.bind(new InetSocketAddress(InetAddress.getByName("::1"), 0));
+      return true;
+    } catch (IOException e) {
+      return false;
     }
   }
 

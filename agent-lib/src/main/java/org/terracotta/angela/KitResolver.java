@@ -74,6 +74,7 @@ public abstract class KitResolver {
    * @param license              {@link License}
    * @param localInstallerPath   path of the installer on the local machine
    * @param rootInstallationPath directory where installs are stored for caching
+   * @param env optional env values
    */
   public abstract void createLocalInstallFromInstaller(Version version, PackageType packageType, License license, Path localInstallerPath, Path rootInstallationPath, TerracottaCommandLineEnvironment env);
 
@@ -84,7 +85,7 @@ public abstract class KitResolver {
    * @param packageType          {@link PackageType}
    * @param localInstallerPath   path of the installer on the local machine
    * @param rootInstallationPath directory where installs are stored for caching
-   * @return
+   * @return path
    */
   public abstract Path resolveKitInstallationPath(Version version, PackageType packageType, Path localInstallerPath, Path rootInstallationPath);
 

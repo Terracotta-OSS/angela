@@ -36,11 +36,9 @@ import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
 import org.terracotta.angela.common.util.AngelaVersions;
 import org.terracotta.angela.common.util.IpUtils;
-import org.zeroturnaround.process.PidUtil;
-import org.zeroturnaround.process.ProcessUtil;
-import org.zeroturnaround.process.Processes;
+import org.terracotta.angela.common.util.Pids;
+import org.terracotta.angela.common.util.ProcessUtil;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -123,6 +121,7 @@ public class Agent implements AutoCloseable {
 
   /**
    * main method used when starting a new ignite agent locally or remotely
+   * @param args option arguments
    */
   public static void main(String[] args) {
     final String instanceName = System.getProperty("angela.instanceName");
@@ -165,9 +164,13 @@ public class Agent implements AutoCloseable {
             // let 5 sec for a normal shutdown, otherwise, kill me
             sleep(5_000);
             logger.warn("Forcefully killing agent after 10 seconds");
-            ProcessUtil.destroyForcefullyAndWait(Processes.newPidProcess(PidUtil.getMyPid()));
-          } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            boolean killed = ProcessUtil.destroyGracefullyOrForcefullyAndWait(Pids.current());
+            if (!killed) {
+              logger.warn("Failed to kill agent process {}", Pids.current());
+            }
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Interrupted while waiting to kill agent process", e);
           }
         }
       }.start();
@@ -214,7 +217,7 @@ public class Agent implements AutoCloseable {
     int igniteComPort = portReservation.next();
     String hostname = IpUtils.getHostName();
 
-    AgentID agentID = new AgentID(instanceName, hostname, igniteDiscoveryPort, PidUtil.getMyPid());
+    AgentID agentID = new AgentID(instanceName, hostname, igniteDiscoveryPort, Pids.current());
 
     logger.info("Starting Ignite agent: {} with com port: {}...", agentID, igniteComPort);
 
@@ -236,13 +239,13 @@ public class Agent implements AutoCloseable {
     cfg.setIgniteHome(IGNITE_DIR.resolve(System.getProperty("user.name")).toString());
 
     cfg.setDiscoverySpi(new TcpDiscoverySpi()
-        .setLocalPort(igniteDiscoveryPort)
-        .setLocalPortRange(0) // we must not use the range otherwise Ignite might bind to a port not reserved
-        .setIpFinder(new TcpDiscoveryVmIpFinder(true).setAddresses(peers)));
+            .setLocalPort(igniteDiscoveryPort)
+            .setLocalPortRange(0) // we must not use the range otherwise Ignite might bind to a port not reserved
+            .setIpFinder(new TcpDiscoveryVmIpFinder(true).setAddresses(peers)));
 
     cfg.setCommunicationSpi(new TcpCommunicationSpi()
-        .setLocalPort(igniteComPort)
-        .setLocalPortRange(0)); // we must not use the range otherwise Ignite might bind to a port not reserved
+            .setLocalPort(igniteComPort)
+            .setLocalPortRange(0)); // we must not use the range otherwise Ignite might bind to a port not reserved
 
     logger.info("Connecting agent: {} to peers: {}", agentID, peers);
 

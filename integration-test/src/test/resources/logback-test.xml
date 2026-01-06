@@ -28,7 +28,6 @@
   <logger name="org.terracotta.utilities.test.net" level="WARN"/>
   <logger name="org.terracotta.utilities.test.io" level="WARN"/>
 
-  <logger name="org.zeroturnaround.process.PidUtil" level="INFO"/>
 
   <logger name="org.apache.sshd" level="INFO"/>
   <logger name="net.schmizz.sshj" level="INFO"/>

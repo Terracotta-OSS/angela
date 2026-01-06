@@ -19,10 +19,10 @@ package org.terracotta.angela.common.metrics;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.terracotta.angela.common.util.Pids;
 import org.terracotta.angela.common.util.ProcessUtil;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.StartedProcess;
-import org.zeroturnaround.process.PidUtil;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -102,7 +102,7 @@ public class HardwareMetricsCollector {
 
     processes.values().forEach(process -> {
       try {
-        ProcessUtil.destroyGracefullyOrForcefullyAndWait(PidUtil.getPid(process.getProcess()));
+        ProcessUtil.destroyGracefullyOrForcefullyAndWait(Pids.of(process.getProcess()));
       } catch (Exception e) {
         exceptions.add(e);
       }

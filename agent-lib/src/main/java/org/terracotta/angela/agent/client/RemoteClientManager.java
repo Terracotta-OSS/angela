@@ -28,9 +28,9 @@ import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.ExternalLoggers;
 import org.terracotta.angela.common.util.LogOutputStream;
 import org.terracotta.angela.common.util.OS;
+import org.terracotta.angela.common.util.Pids;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.StartedProcess;
-import org.zeroturnaround.process.PidUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -128,7 +128,7 @@ public class RemoteClientManager {
           .directory(getClientInstallationPath().toFile());
       StartedProcess startedProcess = processExecutor.start();
 
-      logger.info("Waiting for spawned agent with PID: {} to be ready...", PidUtil.getPid(startedProcess.getProcess()));
+      logger.info("Waiting for spawned agent with PID: {} to be ready...", Pids.of(startedProcess.getProcess()));
       while (startedProcess.getProcess().isAlive() && !started.get()) {
         Thread.sleep(200); // no need to do a short wait because ignite startup is really slow
       }

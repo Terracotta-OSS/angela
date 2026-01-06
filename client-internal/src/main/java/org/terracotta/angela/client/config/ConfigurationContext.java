@@ -48,4 +48,6 @@ public interface ConfigurationContext {
   ToolConfigurationContext importTool();
 
   VoterConfigurationContext voter();
+
+  WebMIsConfigurationContext webMIs();
 }

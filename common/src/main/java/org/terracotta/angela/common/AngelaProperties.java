@@ -64,6 +64,7 @@ public enum AngelaProperties {
   SSH_USERNAME_KEY_PATH("angela.ssh.userName.keyPath", null),
   SSH_STRICT_HOST_CHECKING("angela.ssh.strictHostKeyChecking", "true"),
   SSH_PORT("angela.ssh.port", "22"),
+  SSH_REMOTE_AGENT_START_TIMEOUT_SECONDS("angela.ssh.remoteAgent.startTimeoutSeconds", "120"),
 
   // logging properties
   TMS_FULL_LOGGING("angela.tms.fullLogging", "false"),
@@ -149,5 +150,9 @@ public enum AngelaProperties {
 
   public boolean getBooleanValue() {
     return Boolean.parseBoolean(getValue());
+  }
+
+  public long getLongValue() {
+    return Long.parseLong(getValue());
   }
 }

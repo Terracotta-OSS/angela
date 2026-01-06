@@ -80,7 +80,32 @@ public class LocalKitManager extends KitManager {
     }
   }
 
-  public void setupLocalInstall(License license, String kitInstallationPath, boolean offline, TerracottaCommandLineEnvironment env) {
+  // TODO REFACTOR with below setupLocalInstall method according to parameter Distribution
+  public void setupLocalWebMInstall(License license, TerracottaCommandLineEnvironment env) {
+      Path localInstallerPath = rootInstallationPath.resolve(
+              kitResolver.resolveLocalInstallerPath(distribution.getVersion(), distribution.getLicenseType(), distribution.getPackageType()));
+      logger.debug("Checking if local kit is available at: {}", localInstallerPath);
+
+      try {
+        lockConcurrentInstall(localInstallerPath);
+        if (!isValidLocalInstallerFilePath(false, localInstallerPath)) {
+          logger.debug("Local kit at: {} invalid or absent. Downloading a fresh installer", localInstallerPath);
+          kitResolver.downloadLocalInstaller(distribution.getVersion(), distribution.getLicenseType(), distribution.getPackageType(), localInstallerPath);
+        }
+
+        this.kitInstallationPath = kitResolver.resolveKitInstallationPath(distribution.getVersion(), distribution.getPackageType(), localInstallerPath, rootInstallationPath);
+
+        if (!Files.isDirectory(this.kitInstallationPath)) {
+          logger.debug("Local install not available at: {}", this.kitInstallationPath);
+          kitResolver.createLocalInstallFromInstaller(distribution.getVersion(), distribution.getPackageType(), license, localInstallerPath, rootInstallationPath, env);
+        }
+      } finally {
+        unlockConcurrentInstall(localInstallerPath);
+      }
+  }
+
+
+    public void setupLocalInstall(License license, String kitInstallationPath, boolean offline, TerracottaCommandLineEnvironment env) {
     if (kitInstallationPath != null) {
       logger.debug("Using kitInstallationPath: {}", kitInstallationPath);
       Path path = Paths.get(kitInstallationPath);

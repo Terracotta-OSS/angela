@@ -53,6 +53,9 @@ public interface Executor extends AutoCloseable {
    * Returns the new agentId that has been spawned.
    * If an agent already exists for this hostname,
    * empty optional instead.
+   *
+   * @param hostname hostname where to start an Agent
+   * @return AgentID Agent ID
    */
   Optional<AgentID> startRemoteAgent(String hostname);
 

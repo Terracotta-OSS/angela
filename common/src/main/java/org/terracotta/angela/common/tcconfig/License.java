@@ -53,9 +53,12 @@ public class License implements Serializable {
     if (!licenseFile.exists()) {
       try {
         Files.write(licenseFile.toPath(), licenseContent.getBytes(StandardCharsets.UTF_8));
+        licenseFile.setWritable(true);
       } catch (IOException ioe) {
         throw new RuntimeException(ioe);
       }
+    } else {
+      licenseFile.setWritable(true);
     }
     return licenseFile;
   }

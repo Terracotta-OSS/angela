@@ -53,5 +53,5 @@ jobs:
       jdkVersion: 1.17
       timeoutInMinutes: 180
       vmImage: 'windows-latest'
-      options: -B -Djava.build.version=1.11 -Djava.test.version=1.11
+      options: -B -Djava.build.version=1.17 -Djava.test.version=1.17
       mavenGoals: 'clean install'

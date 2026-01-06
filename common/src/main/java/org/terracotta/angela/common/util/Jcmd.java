@@ -27,12 +27,12 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Jcmd {
-  public static ToolExecutionResult jcmd(int javaPid, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
+  public static ToolExecutionResult jcmd(long javaPid, TerracottaCommandLineEnvironment tcEnv, String... arguments) {
     Path javaHome = tcEnv.getJavaHome();
     Path path = JavaBinaries.find("jcmd", javaHome).orElseThrow(() -> new IllegalStateException("jcmd not found"));
     List<String> cmdLine = new ArrayList<>();
     cmdLine.add(path.toAbsolutePath().toString());
-    cmdLine.add(Integer.toString(javaPid));
+    cmdLine.add(Long.toString(javaPid));
     cmdLine.addAll(Arrays.asList(arguments));
 
     try {

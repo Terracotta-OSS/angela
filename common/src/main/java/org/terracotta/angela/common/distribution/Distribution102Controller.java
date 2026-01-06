@@ -28,6 +28,7 @@ import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.WebMIsServerInstance;
 import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.License;
@@ -249,7 +250,7 @@ public class Distribution102Controller extends DistributionController {
       throw new RuntimeException("TMS process died before reaching STARTED state");
     }
 
-    int wrapperPid = watchedProcess.getPid();
+    long wrapperPid = watchedProcess.getPid();
     int javaProcessPid = javaPid.get();
     return new TerracottaManagementServerInstanceProcess(stateRef, wrapperPid, javaProcessPid);
   }
@@ -322,6 +323,16 @@ public class Distribution102Controller extends DistributionController {
 
     File tmcPropertiesOutput = new File(workingDir, "tools/management/conf/tmc.properties");
     prepareTMS(properties, tmcPropertiesOutput, tmsServerSecurityConfig, workingDir);
+  }
+
+  @Override
+  public WebMIsServerInstance.WebMIsServerInstanceProcess startWebMIs(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+    throw new UnsupportedOperationException("WebM IS is not supported in this distribution version, if you need, you can implement it in Distribution102Controller");
+  }
+
+  @Override
+  public void stopWebMIs(WebMIsServerInstance.WebMIsServerInstanceProcess process, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+    throw new UnsupportedOperationException("WebM IS is not supported in this distribution version, if you need, you can implement it in Distribution102Controller");
   }
 
   private List<String> createClusterToolCommand(File installLocation, File workingDir, SecurityRootDirectory securityDir, String[] arguments) {

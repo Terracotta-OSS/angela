@@ -91,12 +91,17 @@ public class Distribution implements Serializable {
       return distributionControllerType;
     }
 
-    // 11.x, 12.x and above => TCDB
-    if (version.getMajor() >= 11) {
+    // 12.x => TCDB with dynamic config, import-export tool + webMethods IS support
+    if (version.getMajor() == 12) {
+      return runtimeOptions.contains(RuntimeOption.INLINE_SERVERS) ? Distribution107InlineController.class : Distribution120Controller.class;
+    }
+
+    // 11.x => TCDB with dynamic config + webMethods IS support
+    if (version.getMajor() == 11) {
       return runtimeOptions.contains(RuntimeOption.INLINE_SERVERS) ? Distribution107InlineController.class : Distribution107Controller.class;
     }
 
-    // 10.7 and above => TCDB
+    // 10.7 and above => TCDB with dynamic config + webMethods IS support
     if (version.getMajor() == 10 && version.getMinor() >= 7) {
       return runtimeOptions.contains(RuntimeOption.INLINE_SERVERS) ? Distribution107InlineController.class : Distribution107Controller.class;
     }

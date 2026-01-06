@@ -29,7 +29,10 @@ public enum LicenseType {
   // 10.x:
   TERRACOTTA_OS(null, null),
   TERRACOTTA("terracotta-db", "/licenses/Terracotta101.xml"),
-  ;
+
+
+  WEBM_IS(null, "/licenses/msrKey.xml"),
+  WEBM_MSR(null, "/licenses/msrKey.xml");
 
   private final String kratosTag;
   private final String defaultLicenseResourceName;

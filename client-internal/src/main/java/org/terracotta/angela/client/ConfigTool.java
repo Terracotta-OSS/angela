@@ -37,9 +37,18 @@ import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.topology.Topology;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import static org.terracotta.angela.common.AngelaProperties.*;
+import static org.terracotta.angela.common.AngelaProperties.KIT_COPY;
+import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_DIR;
+import static org.terracotta.angela.common.AngelaProperties.KIT_INSTALLATION_PATH;
+import static org.terracotta.angela.common.AngelaProperties.OFFLINE;
+import static org.terracotta.angela.common.AngelaProperties.SKIP_UNINSTALL;
+import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 
 public class ConfigTool implements AutoCloseable {
   private final static Logger logger = LoggerFactory.getLogger(ConfigTool.class);

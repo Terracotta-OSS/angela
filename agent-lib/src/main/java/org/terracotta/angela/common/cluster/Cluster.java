@@ -69,6 +69,7 @@ public class Cluster implements Serializable {
 
   /**
    * The agent from which the Ignite closure was executed
+   * @return Agent ID
    */
   public AgentID getFromAgentId() {
     return from;
@@ -76,6 +77,7 @@ public class Cluster implements Serializable {
 
   /**
    * The current local agent where we are executing the closure
+   * @return Agent ID
    */
   public AgentID getLocalAgentId() {
     return AgentID.valueOf(ignite.cluster().localNode().attribute("angela.nodeName"));

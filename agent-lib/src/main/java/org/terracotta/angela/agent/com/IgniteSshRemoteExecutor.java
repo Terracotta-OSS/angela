@@ -39,6 +39,7 @@ import org.terracotta.angela.common.util.IpUtils;
 import org.terracotta.angela.common.util.JDK;
 import org.terracotta.angela.common.util.JavaLocationResolver;
 import org.terracotta.angela.common.util.LogOutputStream;
+import org.terracotta.angela.common.util.ThreadDump;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -66,6 +67,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.joining;
 import static org.terracotta.angela.common.AngelaProperties.ROOT_DIR;
 import static org.terracotta.angela.common.AngelaProperties.SSH_PORT;
+import static org.terracotta.angela.common.AngelaProperties.SSH_REMOTE_AGENT_START_TIMEOUT_SECONDS;
 import static org.terracotta.angela.common.AngelaProperties.SSH_STRICT_HOST_CHECKING;
 import static org.terracotta.angela.common.AngelaProperties.SSH_USERNAME;
 import static org.terracotta.angela.common.AngelaProperties.SSH_USERNAME_KEY_PATH;
@@ -467,7 +469,18 @@ public class IgniteSshRemoteExecutor extends IgniteLocalExecutor {
       if (!cmd.isOpen()) {
         throw new RuntimeException("agent refused to start");
       }
-      started.await();
+      long timeoutSeconds = SSH_REMOTE_AGENT_START_TIMEOUT_SECONDS.getLongValue();
+      boolean completed;
+      if (timeoutSeconds <= 0) {
+        started.await();
+        completed = true;
+      } else {
+        completed = started.await(timeoutSeconds, TimeUnit.SECONDS);
+      }
+      if (!completed) {
+        ThreadDump.dump(logger, "Timed out waiting for Ignite agent startup on " + serverName);
+        throw new RuntimeException("Timed out waiting for Ignite agent to start on " + serverName + " after " + timeoutSeconds + "s");
+      }
       return agentID.get();
     }
   }

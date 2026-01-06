@@ -23,6 +23,7 @@ import org.terracotta.angela.common.TerracottaServerHandle;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.WebMIsServerInstance;
 import org.terracotta.angela.common.tcconfig.License;
 import org.terracotta.angela.common.tcconfig.SecurityRootDirectory;
 import org.terracotta.angela.common.tcconfig.ServerSymbolicName;
@@ -119,4 +120,8 @@ public abstract class DistributionController {
       throw new RuntimeException("Unable to enable security in TMS tmc.properties file", ex);
     }
   }
+
+  public abstract WebMIsServerInstance.WebMIsServerInstanceProcess startWebMIs(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv);
+
+  public abstract void stopWebMIs(WebMIsServerInstance.WebMIsServerInstanceProcess process, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv);
 }

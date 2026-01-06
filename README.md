@@ -327,3 +327,17 @@ Getting a standard Ignite executor supporting SSH agent install:
       .setStrictHostKeyChecking(false)
       .setPort(...);
 ```
+
+### Adding your own application
+
+If you look at WebMIs, this shows how to use the framework to control the lifecycle of your own application.
+
+You will need to write classes such as:
+
+- WebMIsServerInstance
+- WebMIsInstall
+- WebMIsTopology
+- WebMIsServerState
+- WebMIsServer
+- WebMIsConfigurationContext
+- WebMIs

@@ -82,7 +82,7 @@ public class Client implements Closeable {
     return clientId;
   }
 
-  int getPid() {
+  long getPid() {
     return getClientAgentID().getPid();
   }
 
@@ -212,7 +212,7 @@ public class Client implements Closeable {
     stopped = true;
 
     logger.info("Killing agent: {} for client:{} instance: {} started from: {}", clientAgentID, clientId, instanceId, parentAgentID);
-    final int pid = clientAgentID.getPid();
+    final long pid = clientAgentID.getPid();
     try {
       executor.execute(parentAgentID, (IgniteRunnable) () -> AgentController.getInstance().stopClient(instanceId, pid));
       executor.getGroup().getAllAgents().remove(clientAgentID);   // Dead agent -- remove

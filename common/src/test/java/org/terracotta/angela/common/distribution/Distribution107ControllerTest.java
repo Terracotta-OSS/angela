@@ -193,7 +193,7 @@ public class Distribution107ControllerTest {
   public void testCreateSimpleImportToolCommandForKit() {
     Distribution distribution = mock(Distribution.class);
     when(distribution.getPackageType()).thenReturn(PackageType.KIT);
-    Distribution107Controller controller = new Distribution107Controller(distribution);
+    Distribution120Controller controller = new Distribution120Controller(distribution);
 
     final File installLocation = new File("/somedir");
     final List<String> importToolCommand = controller.createImportToolCommand(installLocation, null, null, new String[]{});
@@ -205,7 +205,7 @@ public class Distribution107ControllerTest {
   public void testCreateImportToolWithSecurityCommandForKit() {
     Distribution distribution = mock(Distribution.class);
     when(distribution.getPackageType()).thenReturn(PackageType.KIT);
-    Distribution107Controller controller = new Distribution107Controller(distribution);
+    Distribution120Controller controller = new Distribution120Controller(distribution);
 
     final File installLocation = new File("/somedir");
     final File workDir = new File("/workdir");
@@ -222,7 +222,7 @@ public class Distribution107ControllerTest {
   public void testCreateSimpleImportToolCommandForSAG() {
     Distribution distribution = mock(Distribution.class);
     when(distribution.getPackageType()).thenReturn(PackageType.SAG_INSTALLER);
-    Distribution107Controller controller = new Distribution107Controller(distribution);
+    Distribution120Controller controller = new Distribution120Controller(distribution);
 
     final File installLocation = new File("/somedir");
     final List<String> importToolCommand = controller.createImportToolCommand(installLocation, null, null, new String[]{});

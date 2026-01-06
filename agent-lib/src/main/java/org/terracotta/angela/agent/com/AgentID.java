@@ -17,7 +17,7 @@
 package org.terracotta.angela.agent.com;
 
 import org.terracotta.angela.common.util.IpUtils;
-import org.zeroturnaround.process.PidUtil;
+import org.terracotta.angela.common.util.Pids;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
@@ -31,14 +31,14 @@ import static java.util.Objects.requireNonNull;
 public class AgentID implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  private static final AgentID LOCAL = new AgentID("local", IpUtils.getHostName(), 0, PidUtil.getMyPid());
+  private static final AgentID LOCAL = new AgentID("local", IpUtils.getHostName(), 0, Pids.current());
 
   private final String name;
   private final String hostname;
   private final int port;
-  private final int pid;
+  private final long pid;
 
-  public AgentID(String name, String hostname, int port, int pid) {
+  public AgentID(String name, String hostname, int port, long pid) {
     this.name = requireNonNull(name);
     this.hostname = requireNonNull(hostname);
     this.port = port;
@@ -51,7 +51,7 @@ public class AgentID implements Serializable {
     }
   }
 
-  public int getPid() {
+  public long getPid() {
     return pid;
   }
 

@@ -26,6 +26,7 @@ import org.terracotta.angela.common.TerracottaServerState;
 import org.terracotta.angela.common.TerracottaVoter;
 import org.terracotta.angela.common.TerracottaVoterInstance.TerracottaVoterInstanceProcess;
 import org.terracotta.angela.common.ToolExecutionResult;
+import org.terracotta.angela.common.WebMIsServerInstance;
 import org.terracotta.angela.common.provider.ConfigurationManager;
 import org.terracotta.angela.common.provider.TcConfigManager;
 import org.terracotta.angela.common.tcconfig.License;
@@ -403,5 +404,15 @@ public class Distribution43Controller extends DistributionController {
 
   @Override
   public void prepareTMS(File kitDir, File workingDir, TmsServerSecurityConfig tmsServerSecurityConfig) {
+  }
+
+  @Override
+  public WebMIsServerInstance.WebMIsServerInstanceProcess startWebMIs(File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+    throw new UnsupportedOperationException("WebM IS is not supported in this distribution version, if you need, you can implement it in Distribution43Controller");
+  }
+
+  @Override
+  public void stopWebMIs(WebMIsServerInstance.WebMIsServerInstanceProcess process, File kitDir, File workingDir, TerracottaCommandLineEnvironment tcEnv) {
+    throw new UnsupportedOperationException("WebM IS is not supported in this distribution version, if you need, you can implement it in Distribution43Controller");
   }
 }

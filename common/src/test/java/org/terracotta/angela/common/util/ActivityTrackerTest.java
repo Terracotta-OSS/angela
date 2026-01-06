@@ -52,11 +52,9 @@ public class ActivityTrackerTest {
       AtomicInteger stops = new AtomicInteger();
 
       activityTracker.onStart(() -> {
-        System.out.println("onStart()");
         starts.incrementAndGet();
       });
       activityTracker.onStop(() -> {
-        System.out.println("onStop()");
         stops.incrementAndGet();
       });
       activityTracker.onInactivity(() -> {

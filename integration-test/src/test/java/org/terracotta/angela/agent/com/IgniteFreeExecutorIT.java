@@ -26,7 +26,7 @@ import org.terracotta.angela.common.clientconfig.ClientSymbolicName;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.topology.InstanceId;
 import org.terracotta.angela.common.util.IpUtils;
-import org.zeroturnaround.process.PidUtil;
+import org.terracotta.angela.common.util.Pids;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -61,7 +61,7 @@ public class IgniteFreeExecutorIT {
 
   @Test
   public void testGetLocalAgentID() {
-    assertEquals("local#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#0", executor.getLocalAgentID().toString());
+    assertEquals("local#" + Pids.current() + "@" + IpUtils.getHostName() + "#0", executor.getLocalAgentID().toString());
   }
 
   @Test

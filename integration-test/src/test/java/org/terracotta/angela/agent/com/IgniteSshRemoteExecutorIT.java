@@ -18,6 +18,7 @@ package org.terracotta.angela.agent.com;
 
 import org.junit.After;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
@@ -43,6 +44,7 @@ import static org.junit.Assume.assumeThat;
 /**
  * @author Mathieu Carbou
  */
+@Ignore("Temurin 17 crash - will enable back when moving to Ignite 3")
 public class IgniteSshRemoteExecutorIT {
 
   PortAllocator portAllocator = new DefaultPortAllocator();
