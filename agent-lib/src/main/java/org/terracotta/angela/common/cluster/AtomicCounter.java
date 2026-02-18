@@ -16,45 +16,16 @@
  */
 package org.terracotta.angela.common.cluster;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteAtomicLong;
-
 import java.io.Serializable;
 
-public class AtomicCounter implements Serializable {
-  private static final long serialVersionUID = 1L;
-  private final String name;
-  @SuppressFBWarnings("SE_BAD_FIELD")
-  private final IgniteAtomicLong igniteCounter;
+public interface AtomicCounter extends Serializable {
+  long incrementAndGet();
 
-  AtomicCounter(Ignite ignite, String name, long initVal) {
-    this.name = name;
-    igniteCounter = ignite.atomicLong("Atomic-Counter-" + name, initVal, true);
-  }
+  long getAndIncrement();
 
-  public long incrementAndGet() {
-    return igniteCounter.incrementAndGet();
-  }
+  long get();
 
-  public long getAndIncrement() {
-    return igniteCounter.getAndIncrement();
-  }
+  long getAndSet(long value);
 
-  public long get() {
-    return igniteCounter.get();
-  }
-
-  public long getAndSet(long value) {
-    return igniteCounter.getAndSet(value);
-  }
-
-  public boolean compareAndSet(long expVal, long newVal) {
-    return igniteCounter.compareAndSet(expVal, newVal);
-  }
-
-  @Override
-  public String toString() {
-    return name + ":" + get();
-  }
+  boolean compareAndSet(long expVal, long newVal);
 }

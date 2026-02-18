@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.terracotta.angela.agent.com;
+package org.terracotta.angela.agent.com.grid.ignite;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import net.schmizz.sshj.SSHClient;
@@ -31,6 +31,8 @@ import org.apache.ignite.Ignite;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.Agent;
+import org.terracotta.angela.agent.com.AgentID;
+import org.terracotta.angela.agent.com.Exceptions;
 import org.terracotta.angela.common.AngelaProperties;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.util.AngelaVersions;
@@ -122,7 +124,8 @@ public class IgniteSshRemoteExecutor extends IgniteLocalExecutor {
   }
 
   public IgniteSshRemoteExecutor(Agent agent) {
-    super(agent);
+    super(agent.getGroupId(), agent.getAgentID(), ((IgniteGridProvider) agent.getGridProvider()).getIgnite(),
+        agent.getGridProvider().createClusterPrimitives());
   }
 
   public IgniteSshRemoteExecutor(UUID group, AgentID agentID, Ignite ignite) {

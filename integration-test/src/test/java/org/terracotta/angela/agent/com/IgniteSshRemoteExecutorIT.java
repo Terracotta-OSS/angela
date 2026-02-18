@@ -20,6 +20,8 @@ import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.terracotta.angela.agent.Agent;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteGridProvider;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteSshRemoteExecutor;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
@@ -127,6 +129,6 @@ public class IgniteSshRemoteExecutorIT {
       executor.startRemoteAgent("testhostname").get();
     }
     // executor.close() will execute teh shutdown
-    assertEquals(1, agent.getIgnite().cluster().forAttribute("angela.group", group.toString()).nodes().size());
+    assertEquals(1, ((IgniteGridProvider) agent.getGridProvider()).getIgnite().cluster().forAttribute("angela.group", group.toString()).nodes().size());
   }
 }
