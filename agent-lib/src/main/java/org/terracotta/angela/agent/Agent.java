@@ -16,26 +16,14 @@
  */
 package org.terracotta.angela.agent;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteException;
-import org.apache.ignite.IgniteSystemProperties;
-import org.apache.ignite.Ignition;
-import org.apache.ignite.ShutdownPolicy;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.logger.NullLogger;
-import org.apache.ignite.logger.slf4j.Slf4jLogger;
-import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.com.AgentID;
+import org.terracotta.angela.agent.com.grid.GridProvider;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteGridProvider;
 import org.terracotta.angela.common.AngelaProperties;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
-import org.terracotta.angela.common.util.AngelaVersions;
-import org.terracotta.angela.common.util.IpUtils;
 import org.zeroturnaround.process.PidUtil;
 import org.zeroturnaround.process.ProcessUtil;
 import org.zeroturnaround.process.Processes;
@@ -46,11 +34,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
-import static org.terracotta.angela.common.AngelaProperties.IGNITE_LOGGING;
 import static org.terracotta.angela.common.AngelaProperties.getEitherOf;
 import static org.terracotta.angela.common.util.FileUtils.createAndValidateDir;
 
@@ -64,7 +49,6 @@ public class Agent implements AutoCloseable {
   public static final String AGENT_IS_READY_MARKER_LOG = "Agent is ready";
   public static final Path ROOT_DIR;
   public static final Path WORK_DIR;
-  private static final Path IGNITE_DIR;
 
   private static final Logger logger;
 
@@ -80,17 +64,16 @@ public class Agent implements AutoCloseable {
       throw new IllegalArgumentException("Expected ROOT_DIR to be an absolute path, got: " + ROOT_DIR);
     }
     WORK_DIR = ROOT_DIR.resolve("work");
-    IGNITE_DIR = ROOT_DIR.resolve("ignite");
   }
 
   private final UUID group;
   private final AgentID agentID;
-  private final Ignite ignite;
+  private final GridProvider gridProvider;
 
-  public Agent(UUID group, AgentID agentID, Ignite ignite) {
+  public Agent(UUID group, AgentID agentID, GridProvider gridProvider) {
     this.group = group;
     this.agentID = agentID;
-    this.ignite = ignite;
+    this.gridProvider = gridProvider;
   }
 
   public UUID getGroupId() {
@@ -101,8 +84,8 @@ public class Agent implements AutoCloseable {
     return agentID;
   }
 
-  public Ignite getIgnite() {
-    return ignite;
+  public GridProvider getGridProvider() {
+    return gridProvider;
   }
 
   @Override
@@ -113,11 +96,8 @@ public class Agent implements AutoCloseable {
   @Override
   public void close() {
     logger.info("Shutting down agent: {}", agentID);
-    if (ignite != null) {
-      try {
-        ignite.close();
-      } catch (Exception ignored) {
-      }
+    if (gridProvider != null) {
+      gridProvider.close();
     }
   }
 
@@ -143,7 +123,6 @@ public class Agent implements AutoCloseable {
 
     logger.info("Agent: {} Root directory: {}", localAgentID, ROOT_DIR);
     logger.info("Agent: {} Work directory: {}", localAgentID, WORK_DIR);
-    logger.info("Agent: {} Ignite directory: {}", localAgentID, IGNITE_DIR);
 
     AgentController agentController = new AgentController(localAgentID, portAllocator);
 
@@ -173,7 +152,7 @@ public class Agent implements AutoCloseable {
       }.start();
 
       // try a normal close first
-      logger.info("Closing Ignite...");
+      logger.info("Closing grid provider...");
       agent.close();
       try {
         portAllocator.close();
@@ -196,89 +175,10 @@ public class Agent implements AutoCloseable {
     return ignite(group, AGENT_TYPE_ORCHESTRATOR, portAllocator, Collections.emptyList());
   }
 
-  @SuppressWarnings("SwitchStatementWithTooFewBranches")
   public static Agent ignite(UUID group, String instanceName, PortAllocator portAllocator, Collection<String> peers) {
-    // Required to avoid a deadlock if a client job causes a system.exit to be run.
-    // The agent has its own shutdown hook
-    System.setProperty(IgniteSystemProperties.IGNITE_NO_SHUTDOWN_HOOK, "true");
-
-    // do not check for a new version
-    System.setProperty(IgniteSystemProperties.IGNITE_UPDATE_NOTIFIER, "false");
-
     createAndValidateDir(Agent.ROOT_DIR);
     createAndValidateDir(Agent.WORK_DIR);
-    createAndValidateDir(Agent.IGNITE_DIR);
-
-    PortAllocator.PortReservation portReservation = portAllocator.reserve(2);
-    int igniteDiscoveryPort = portReservation.next();
-    int igniteComPort = portReservation.next();
-    String hostname = IpUtils.getHostName();
-
-    AgentID agentID = new AgentID(instanceName, hostname, igniteDiscoveryPort, PidUtil.getMyPid());
-
-    logger.info("Starting Ignite agent: {} with com port: {}...", agentID, igniteComPort);
-
-    IgniteConfiguration cfg = new IgniteConfiguration();
-    Map<String, String> userAttributes = new HashMap<>();
-    userAttributes.put("angela.version", AngelaVersions.INSTANCE.getAngelaVersion());
-    userAttributes.put("angela.nodeName", agentID.toString());
-    userAttributes.put("angela.group", group.toString());
-    // set how the agent was started: inline == embedded in jvm, spawned == agent has its own JVM
-    userAttributes.put("angela.process", System.getProperty("angela.process", "inline"));
-    cfg.setUserAttributes(userAttributes);
-
-    boolean enableLogging = Boolean.getBoolean(IGNITE_LOGGING.getValue());
-    cfg.setShutdownPolicy(ShutdownPolicy.IMMEDIATE);
-    cfg.setGridLogger(enableLogging ? new Slf4jLogger() : new NullLogger());
-    cfg.setPeerClassLoadingEnabled(true);
-    cfg.setMetricsLogFrequency(0);
-    cfg.setIgniteInstanceName(agentID.getNodeName());
-    cfg.setIgniteHome(IGNITE_DIR.resolve(System.getProperty("user.name")).toString());
-
-    cfg.setDiscoverySpi(new TcpDiscoverySpi()
-        .setLocalPort(igniteDiscoveryPort)
-        .setLocalPortRange(0) // we must not use the range otherwise Ignite might bind to a port not reserved
-        .setIpFinder(new TcpDiscoveryVmIpFinder(true).setAddresses(peers)));
-
-    cfg.setCommunicationSpi(new TcpCommunicationSpi()
-        .setLocalPort(igniteComPort)
-        .setLocalPortRange(0)); // we must not use the range otherwise Ignite might bind to a port not reserved
-
-    logger.info("Connecting agent: {} to peers: {}", agentID, peers);
-
-    Ignite ignite;
-    try {
-      ignite = Ignition.start(cfg);
-    } catch (IgniteException e) {
-      logger.error("Error starting node {}", cfg, e);
-      throw new RuntimeException("Error starting node " + agentID, e);
-    }
-
-    ignite.message(ignite.cluster().forRemotes()).localListen("SYSTEM", (uuid, msg) -> {
-      switch (String.valueOf(msg)) {
-        case "close": {
-          new Thread() {
-            {
-              setDaemon(true);
-            }
-
-            @SuppressFBWarnings("DM_EXIT")
-            @Override
-            public void run() {
-              logger.info("Agent: {} received a shutdown request. Exiting...", agentID);
-              System.exit(0);
-            }
-          }.start();
-          return false;
-        }
-        default:
-          return true;
-      }
-    });
-
-    Agent agent = new Agent(group, agentID, ignite);
-    logger.info("Started agent: {} in group: {}", agentID, agent.getGroupId());
-
-    return agent;
+    IgniteGridProvider provider = new IgniteGridProvider(group, instanceName, portAllocator, peers);
+    return new Agent(group, provider.getAgentID(), provider);
   }
 }

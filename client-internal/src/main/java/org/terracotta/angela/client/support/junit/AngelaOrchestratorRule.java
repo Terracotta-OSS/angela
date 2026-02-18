@@ -18,7 +18,7 @@ package org.terracotta.angela.client.support.junit;
 
 import org.junit.runner.Description;
 import org.terracotta.angela.agent.com.Executor;
-import org.terracotta.angela.agent.com.IgniteSshRemoteExecutor;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteSshRemoteExecutor;
 import org.terracotta.angela.client.AngelaOrchestrator;
 import org.terracotta.angela.client.ClusterFactory;
 import org.terracotta.angela.client.config.ConfigurationContext;
