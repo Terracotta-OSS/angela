@@ -18,6 +18,7 @@ package org.terracotta.angela.agent.com;
 
 import org.terracotta.angela.agent.com.RemoteCallable;
 import org.terracotta.angela.agent.com.RemoteRunnable;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteLocalExecutor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,7 +58,7 @@ public class IgniteLocalExecutorIT {
   transient PortAllocator portAllocator = new DefaultPortAllocator();
   transient Agent agent = Agent.igniteOrchestrator(group, portAllocator);
   AgentID agentID = agent.getAgentID();
-  transient Executor executor = new IgniteLocalExecutor(agent);
+  transient Executor executor = agent.getGridProvider().createExecutor(agent.getGroupId(), agent.getAgentID());
 
   @Before
   public void setUp() {
@@ -124,7 +125,7 @@ public class IgniteLocalExecutorIT {
     final Cluster cluster = executor.getCluster();
     final AtomicCounter counter = cluster.atomicCounter("c", 0);
     try (Agent agent2 = Agent.ignite(agent.getGroupId(), "client-1", portAllocator, executor.getGroup().getPeerAddresses());
-         Executor executor2 = new IgniteLocalExecutor(agent2)) {
+         Executor executor2 = agent2.getGridProvider().createExecutor(agent2.getGroupId(), agent2.getAgentID())) {
       final AtomicCounter counter2 = executor2.getCluster().atomicCounter("c", 0);
       assertEquals(1, counter.incrementAndGet());
       counter2.incrementAndGet();
@@ -137,7 +138,7 @@ public class IgniteLocalExecutorIT {
   @Test
   public void testExecute() throws ExecutionException, InterruptedException {
     try (Agent agent2 = Agent.ignite(agent.getGroupId(), "client-1", portAllocator, executor.getGroup().getPeerAddresses());
-         Executor executor2 = new IgniteLocalExecutor(agent2)) {
+         Executor executor2 = agent2.getGridProvider().createExecutor(agent2.getGroupId(), agent2.getAgentID())) {
       executor.execute(agentID, (RemoteRunnable) () -> counter.incrementAndGet());
       executor.execute(agent2.getAgentID(), (RemoteRunnable) () -> counter.incrementAndGet());
       assertEquals(2, counter.get());

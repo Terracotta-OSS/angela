@@ -22,6 +22,7 @@ import org.junit.Test;
 import org.terracotta.angela.agent.com.AgentID;
 import org.terracotta.angela.agent.com.Executor;
 import org.terracotta.angela.agent.com.IgniteFreeExecutor;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteGridProvider;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.util.HostPort;
 import org.terracotta.angela.common.util.IpUtils;
@@ -74,7 +75,7 @@ public class AgentIT {
       assertEquals(Agent.AGENT_TYPE_ORCHESTRATOR + "#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#" + port1, agentID1.toString());
       assertEquals("client-job#" + PidUtil.getMyPid() + "@" + IpUtils.getHostName() + "#" + port2, agentID2.toString());
 
-      final Collection<AgentID> nodes = agent1.getIgnite().cluster().forAttribute("angela.group", agent1.getGroupId().toString()).nodes()
+      final Collection<AgentID> nodes = ((IgniteGridProvider) agent1.getGridProvider()).getIgnite().cluster().forAttribute("angela.group", agent1.getGroupId().toString()).nodes()
           .stream()
           .map(clusterNode -> AgentID.valueOf(clusterNode.attribute("angela.nodeName")))
           .collect(toList());
@@ -93,7 +94,7 @@ public class AgentIT {
          Agent agent1 = Agent.igniteOrchestrator(group, portAllocator);
          Agent agent2 = Agent.ignite(group, "two", portAllocator, Collections.singleton(new HostPort(agent1.getAgentID().getAddress()).getHostPort()))) {
 
-      final Ignite ignite1 = agent1.getIgnite();
+      final Ignite ignite1 = ((IgniteGridProvider) agent1.getGridProvider()).getIgnite();
       final ClusterGroup clusterGroup = ignite1.cluster().forAttribute("angela.group", group.toString());
       assertEquals(2, clusterGroup.nodes().size());
       ignite1.compute(clusterGroup).broadcast(() -> AgentIT.counter.incrementAndGet());

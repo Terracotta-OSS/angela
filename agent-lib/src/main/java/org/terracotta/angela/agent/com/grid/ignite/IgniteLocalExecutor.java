@@ -14,14 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.terracotta.angela.agent.com;
+package org.terracotta.angela.agent.com.grid.ignite;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.configuration.CollectionConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.client.RemoteClientManager;
+import org.terracotta.angela.agent.com.AgentGroup;
+import org.terracotta.angela.agent.com.AgentID;
+import org.terracotta.angela.agent.com.Executor;
+import org.terracotta.angela.agent.com.FileTransfer;
+import org.terracotta.angela.agent.com.RemoteCallable;
+import org.terracotta.angela.agent.com.RemoteRunnable;
+import org.terracotta.angela.agent.com.grid.ClusterPrimitives;
 import org.terracotta.angela.agent.kit.RemoteKitManager;
 import org.terracotta.angela.common.clientconfig.ClientId;
 import org.terracotta.angela.common.cluster.Cluster;
@@ -54,15 +60,17 @@ public class IgniteLocalExecutor implements Executor {
   protected final Ignite ignite;
   protected final AgentID agentID;
   protected final IgniteAgentGroup agentGroup;
-
-  public IgniteLocalExecutor(Agent agent) {
-    this(agent.getGroupId(), agent.getAgentID(), agent.getIgnite());
-  }
+  protected final ClusterPrimitives clusterPrimitives;
 
   public IgniteLocalExecutor(UUID group, AgentID agentID, Ignite ignite) {
+    this(group, agentID, ignite, new IgniteClusterPrimitives(ignite));
+  }
+
+  public IgniteLocalExecutor(UUID group, AgentID agentID, Ignite ignite, ClusterPrimitives clusterPrimitives) {
     this.group = group;
     this.agentID = agentID;
     this.ignite = ignite;
+    this.clusterPrimitives = clusterPrimitives;
     this.agentGroup = new IgniteAgentGroup(group, agentID, ignite);
   }
 
@@ -140,12 +148,12 @@ public class IgniteLocalExecutor implements Executor {
 
   @Override
   public Cluster getCluster() {
-    return new Cluster(ignite, agentID, null);
+    return new Cluster(clusterPrimitives, agentID, null);
   }
 
   @Override
   public Cluster getCluster(ClientId clientId) {
-    return new Cluster(ignite, agentID, clientId);
+    return new Cluster(clusterPrimitives, agentID, clientId);
   }
 
   @Override

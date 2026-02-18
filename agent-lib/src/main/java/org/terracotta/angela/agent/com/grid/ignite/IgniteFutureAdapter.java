@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.terracotta.angela.agent.com;
+package org.terracotta.angela.agent.com.grid.ignite;
 
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.IgniteInterruptedException;
@@ -23,6 +23,8 @@ import org.apache.ignite.lang.IgniteFuture;
 import org.apache.ignite.lang.IgniteFutureTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.terracotta.angela.agent.com.AgentID;
+import org.terracotta.angela.agent.com.RemoteExecutionException;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;

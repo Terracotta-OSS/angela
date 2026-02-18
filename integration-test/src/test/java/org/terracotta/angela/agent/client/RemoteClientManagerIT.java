@@ -21,7 +21,7 @@ import org.junit.Test;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.com.AgentID;
 import org.terracotta.angela.agent.com.Executor;
-import org.terracotta.angela.agent.com.IgniteLocalExecutor;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteLocalExecutor;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
@@ -44,7 +44,7 @@ public class RemoteClientManagerIT {
   UUID group = UUID.randomUUID();
   PortAllocator portAllocator = new DefaultPortAllocator();
   Agent agent = Agent.igniteOrchestrator(group, portAllocator);
-  Executor executor = new IgniteLocalExecutor(agent);
+  Executor executor = agent.getGridProvider().createExecutor(agent.getGroupId(), agent.getAgentID());
 
   @After
   public void tearDown() {
