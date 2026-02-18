@@ -36,6 +36,10 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.hazelcast</groupId>
+      <artifactId>hazelcast</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.hierynomus</groupId>
       <artifactId>sshj</artifactId>
       <exclusions>

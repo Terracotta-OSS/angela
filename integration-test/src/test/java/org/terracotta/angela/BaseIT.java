@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.terracotta.angela.agent.com.AgentID;
 import org.terracotta.angela.agent.com.Executor;
+import org.terracotta.angela.agent.com.grid.hazelcast.HazelcastSshRemoteExecutor;
 import org.terracotta.angela.client.AngelaOrchestrator;
 import org.terracotta.angela.common.distribution.Distribution;
 import org.terracotta.angela.common.distribution.RuntimeOption;
@@ -48,23 +49,28 @@ import static org.terracotta.angela.common.topology.PackageType.KIT;
 import static org.terracotta.angela.common.topology.Version.version;
 
 /**
- * This base class will execute all tests of sub-classes in all the angela supported modes
+ * This base class will execute all tests of sub-classes in all the angela supported modes,
+ * covering both Ignite and Hazelcast grid providers.
  */
 @RunWith(Parameterized.class)
 public abstract class BaseIT {
   @Parameters(name = "{index}: mode={0} hostname={1} inline={2} ssh={3}")
   public static Iterable<Object[]> data() {
-    List<Object[]> cases = new ArrayList<>(6);
+    List<Object[]> cases = new ArrayList<>(10);
 
     cases.add(new Object[]{"igniteFree()", IpUtils.getHostName(), true, false});
     cases.add(new Object[]{"igniteFree()", IpUtils.getHostName(), false, false});
     cases.add(new Object[]{"igniteLocal()", IpUtils.getHostName(), true, false});
     cases.add(new Object[]{"igniteLocal()", IpUtils.getHostName(), false, false});
+    cases.add(new Object[]{"hazelcastLocal()", IpUtils.getHostName(), true, false});
+    cases.add(new Object[]{"hazelcastLocal()", IpUtils.getHostName(), false, false});
 
     if (!System.getProperty("java.version").startsWith("1.8") && !OS.INSTANCE.isWindows()) {
       // ssh tests only on 1.11 since they require the usage of -Djdk.net.hosts.file
       cases.add(new Object[]{"igniteRemote()", "testhostname", true, true});
       cases.add(new Object[]{"igniteRemote()", "testhostname", false, true});
+      cases.add(new Object[]{"hazelcastRemote()", "testhostname", true, true});
+      cases.add(new Object[]{"hazelcastRemote()", "testhostname", false, true});
     }
 
     return cases;
@@ -107,6 +113,18 @@ public abstract class BaseIT {
         this.angelaOrchestrator = AngelaOrchestrator.builder()
             .withPortAllocator(portAllocator)
             .igniteRemote(igniteSshRemoteExecutor -> igniteSshRemoteExecutor.setPort(requireNonNull(sshServer).getPort()))
+            .build();
+        break;
+      case "hazelcastLocal()":
+        this.angelaOrchestrator = AngelaOrchestrator.builder()
+            .withPortAllocator(portAllocator)
+            .hazelcastLocal()
+            .build();
+        break;
+      case "hazelcastRemote()":
+        this.angelaOrchestrator = AngelaOrchestrator.builder()
+            .withPortAllocator(portAllocator)
+            .hazelcastRemote((HazelcastSshRemoteExecutor hazelcastSshRemoteExecutor) -> hazelcastSshRemoteExecutor.setPort(requireNonNull(sshServer).getPort()))
             .build();
         break;
       default:

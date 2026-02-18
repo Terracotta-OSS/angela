@@ -48,6 +48,9 @@ public enum AngelaProperties {
   // display Ignite logging (used to help debugging the behaviour of Angela)
   IGNITE_LOGGING("angela.igniteLogging", "false"),
 
+  // grid backend to use when starting a remote agent: "ignite" (default) or "hazelcast"
+  GRID_PROVIDER("angela.gridProvider", "ignite"),
+
   // Define additional hostnames or ip addresses to be considered as local, separated by comma.
   // For some testing, it is possible ot fake some local hostnames.
   ADDED_LOCAL_HOSTNAMES("angela.additionalLocalHostnames", ""),
