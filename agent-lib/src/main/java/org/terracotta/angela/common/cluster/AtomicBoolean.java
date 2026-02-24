@@ -16,41 +16,14 @@
  */
 package org.terracotta.angela.common.cluster;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteAtomicLong;
-
 import java.io.Serializable;
 
-public class AtomicBoolean implements Serializable {
-  private static final long serialVersionUID = 1L;
-  private final String name;
-  @SuppressFBWarnings("SE_BAD_FIELD")
-  private final IgniteAtomicLong igniteCounter;
+public interface AtomicBoolean extends Serializable {
+  boolean get();
 
-  AtomicBoolean(Ignite ignite, String name, boolean initVal) {
-    this.name = name;
-    igniteCounter = ignite.atomicLong("Atomic-Boolean-" + name, initVal ? 1L : 0L, true);
-  }
+  void set(boolean value);
 
-  public boolean get() {
-    return igniteCounter.get() != 0L;
-  }
+  boolean getAndSet(boolean value);
 
-  public void set(boolean value) {
-    igniteCounter.getAndSet(value ? 1L : 0L);
-  }
-
-  public boolean getAndSet(boolean value) {
-    return igniteCounter.getAndSet(value ? 1L : 0L) != 0L;
-  }
-
-  public boolean compareAndSet(boolean expVal, boolean newVal) {
-    return igniteCounter.compareAndSet(expVal ? 1L : 0L, newVal ? 1L : 0L);
-  }
-
-  @Override
-  public String toString() {
-    return name + ":" + get();
-  }
+  boolean compareAndSet(boolean expVal, boolean newVal);
 }

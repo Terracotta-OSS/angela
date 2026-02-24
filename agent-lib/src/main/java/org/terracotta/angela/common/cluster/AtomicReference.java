@@ -16,31 +16,12 @@
  */
 package org.terracotta.angela.common.cluster;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteAtomicReference;
-
 import java.io.Serializable;
 
-public class AtomicReference<T> implements Serializable {
-  private static final long serialVersionUID = 1L;
+public interface AtomicReference<T> extends Serializable {
+  void set(T value);
 
-  @SuppressFBWarnings("SE_BAD_FIELD")
-  private final IgniteAtomicReference<T> igniteReference;
+  boolean compareAndSet(T expect, T update);
 
-  AtomicReference(Ignite ignite, String name, T initialValue) {
-    igniteReference = ignite.atomicReference("Atomic-Reference-" + name, initialValue, true);
-  }
-
-  public void set(T value) {
-    igniteReference.set(value);
-  }
-
-  public boolean compareAndSet(T expect, T update) {
-    return igniteReference.compareAndSet(expect, update);
-  }
-
-  public T get() {
-    return igniteReference.get();
-  }
+  T get();
 }

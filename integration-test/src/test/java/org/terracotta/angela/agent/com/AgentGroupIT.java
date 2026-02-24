@@ -20,6 +20,7 @@ import org.junit.After;
 import org.junit.Test;
 import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.client.RemoteClientManager;
+import org.terracotta.angela.agent.com.grid.ignite.IgniteSshRemoteExecutor;
 import org.terracotta.angela.common.TerracottaCommandLineEnvironment;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
 import org.terracotta.angela.common.net.PortAllocator;
