@@ -176,6 +176,7 @@ public class IgniteGridProvider implements GridProvider {
       try {
         ignite.close();
       } catch (Exception ignored) {
+        logger.warn("Error closing Ignite instance for agent: {}", agentID, ignored);
       }
     }
   }

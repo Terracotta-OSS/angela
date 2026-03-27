@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terracotta.angela.agent.com.AgentID;
 import org.terracotta.angela.agent.com.grid.GridProvider;
+import org.terracotta.angela.agent.com.grid.hazelcast.HazelcastGridProvider;
 import org.terracotta.angela.agent.com.grid.ignite.IgniteGridProvider;
 import org.terracotta.angela.common.AngelaProperties;
 import org.terracotta.angela.common.net.DefaultPortAllocator;
@@ -102,7 +103,9 @@ public class Agent implements AutoCloseable {
   }
 
   /**
-   * main method used when starting a new ignite agent locally or remotely
+   * main method used when starting a new agent locally or remotely.
+   * The grid backend is selected via the {@code angela.gridProvider} system property
+   * ("ignite" by default, "hazelcast" for the Hazelcast backend).
    */
   public static void main(String[] args) {
     final String instanceName = System.getProperty("angela.instanceName");
@@ -118,7 +121,10 @@ public class Agent implements AutoCloseable {
     }
 
     DefaultPortAllocator portAllocator = new DefaultPortAllocator();
-    Agent agent = ignite(UUID.fromString(group), instanceName, portAllocator, Arrays.asList(System.getProperty("angela.directJoin", "").split(",")));
+    Collection<String> peers = Arrays.asList(System.getProperty("angela.directJoin", "").split(","));
+    Agent agent = "hazelcast".equalsIgnoreCase(AngelaProperties.GRID_PROVIDER.getValue())
+        ? hazelcast(UUID.fromString(group), instanceName, portAllocator, peers)
+        : ignite(UUID.fromString(group), instanceName, portAllocator, peers);
     AgentID localAgentID = agent.getAgentID();
 
     logger.info("Agent: {} Root directory: {}", localAgentID, ROOT_DIR);
@@ -179,6 +185,17 @@ public class Agent implements AutoCloseable {
     createAndValidateDir(Agent.ROOT_DIR);
     createAndValidateDir(Agent.WORK_DIR);
     IgniteGridProvider provider = new IgniteGridProvider(group, instanceName, portAllocator, peers);
+    return new Agent(group, provider.getAgentID(), provider);
+  }
+
+  public static Agent hazelcastOrchestrator(UUID group, PortAllocator portAllocator) {
+    return hazelcast(group, AGENT_TYPE_ORCHESTRATOR, portAllocator, Collections.emptyList());
+  }
+
+  public static Agent hazelcast(UUID group, String instanceName, PortAllocator portAllocator, Collection<String> peers) {
+    createAndValidateDir(Agent.ROOT_DIR);
+    createAndValidateDir(Agent.WORK_DIR);
+    HazelcastGridProvider provider = new HazelcastGridProvider(group, instanceName, portAllocator, peers);
     return new Agent(group, provider.getAgentID(), provider);
   }
 }

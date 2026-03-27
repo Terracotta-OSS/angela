@@ -22,6 +22,8 @@ import org.terracotta.angela.agent.Agent;
 import org.terracotta.angela.agent.AgentController;
 import org.terracotta.angela.agent.com.Executor;
 import org.terracotta.angela.agent.com.IgniteFreeExecutor;
+import org.terracotta.angela.agent.com.grid.hazelcast.HazelcastExecutor;
+import org.terracotta.angela.agent.com.grid.hazelcast.HazelcastSshRemoteExecutor;
 import org.terracotta.angela.agent.com.grid.ignite.IgniteLocalExecutor;
 import org.terracotta.angela.agent.com.grid.ignite.IgniteSshRemoteExecutor;
 import org.terracotta.angela.client.config.ConfigurationContext;
@@ -227,6 +229,43 @@ public class AngelaOrchestrator implements Closeable {
       agentBuilder = () -> Agent.igniteOrchestrator(group, portAllocator);
       executorBuilder = agent -> agent.getGridProvider().createExecutor(agent.getGroupId(), agent.getAgentID());
       mode = IgniteLocalExecutor.class.getSimpleName();
+      return this;
+    }
+
+    /**
+     * Local Hazelcast member started, plus one per remote hostname, deployed through SSH.
+     * Client jobs are executed on their specified hostnames.
+     */
+    public AngelaOrchestratorBuilder hazelcastRemote() {
+      agentBuilder = () -> Agent.hazelcastOrchestrator(group, portAllocator);
+      executorBuilder = HazelcastSshRemoteExecutor::new;
+      mode = HazelcastSshRemoteExecutor.class.getSimpleName();
+      return this;
+    }
+
+    /**
+     * Local Hazelcast member started, plus one per remote hostname, deployed through SSH.
+     * Client jobs are executed on their specified hostnames.
+     */
+    public AngelaOrchestratorBuilder hazelcastRemote(Consumer<HazelcastSshRemoteExecutor> configurator) {
+      agentBuilder = () -> Agent.hazelcastOrchestrator(group, portAllocator);
+      executorBuilder = agent -> {
+        final HazelcastSshRemoteExecutor executor = new HazelcastSshRemoteExecutor(agent);
+        configurator.accept(executor);
+        return executor;
+      };
+      mode = HazelcastSshRemoteExecutor.class.getSimpleName();
+      return this;
+    }
+
+    /**
+     * Only one local Hazelcast member, for all hostnames.
+     * No Hazelcast agents will be deployed through SSH.
+     */
+    public AngelaOrchestratorBuilder hazelcastLocal() {
+      agentBuilder = () -> Agent.hazelcastOrchestrator(group, portAllocator);
+      executorBuilder = agent -> agent.getGridProvider().createExecutor(agent.getGroupId(), agent.getAgentID());
+      mode = HazelcastExecutor.class.getSimpleName();
       return this;
     }
 
