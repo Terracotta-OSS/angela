@@ -58,9 +58,9 @@ public class Distribution107ControllerTest {
     final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, kitLocation, args);
 
     assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/server/bin/start-tc-server").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
-    assertThat(tsaCommand.get(1), is(equalTo("-n")));
+    assertThat(tsaCommand.get(1), is(equalTo("-name")));
     assertThat(tsaCommand.get(2), is(equalTo("Server1")));
-    assertThat(tsaCommand.get(3), is(equalTo("-s")));
+    assertThat(tsaCommand.get(3), is(equalTo("-hostname")));
     assertThat(tsaCommand.get(4), is(equalTo("localhost")));
     assertThat(tsaCommand.size(), is(5));
   }
@@ -81,9 +81,9 @@ public class Distribution107ControllerTest {
     final List<String> tsaCommand = controller.createTsaCommand(terracottaServer, kitLocation, kitLocation, args);
 
     assertThat(tsaCommand.get(0), is(equalTo(new File("/somedir/TerracottaDB/server/bin/start-tc-server").getAbsolutePath() + OS.INSTANCE.getShellExtension())));
-    assertThat(tsaCommand.get(1), is(equalTo("-n")));
+    assertThat(tsaCommand.get(1), is(equalTo("-name")));
     assertThat(tsaCommand.get(2), is(equalTo("Server1")));
-    assertThat(tsaCommand.get(3), is(equalTo("-s")));
+    assertThat(tsaCommand.get(3), is(equalTo("-hostname")));
     assertThat(tsaCommand.get(4), is(equalTo("localhost")));
     assertThat(tsaCommand.size(), is(5));
   }

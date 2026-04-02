@@ -64,6 +64,13 @@ public class TerracottaServer implements Serializable {
   private boolean sslTls;
   private boolean whitelist;
   private String clusterName;
+  private volatile boolean relay;
+  private volatile String replicaHostName;
+  private volatile int replicaPort;
+  private volatile boolean replica;
+  private volatile String relayHostName;
+  private volatile int relayPort;
+  private volatile int relayGroupPort;
 
   private TerracottaServer(String serverSymbolicName, String hostName) {
     this.serverSymbolicName = new ServerSymbolicName(serverSymbolicName);
@@ -199,6 +206,41 @@ public class TerracottaServer implements Serializable {
     return this;
   }
 
+  public TerracottaServer relay(boolean relay) {
+    this.relay = relay;
+    return this;
+  }
+
+  public TerracottaServer replicaHostName(String replicaHostName) {
+    this.replicaHostName = replicaHostName;
+    return this;
+  }
+
+  public TerracottaServer replicaPort(int replicaPort) {
+    this.replicaPort = replicaPort;
+    return this;
+  }
+
+  public TerracottaServer replica(boolean replica) {
+    this.replica = replica;
+    return this;
+  }
+
+  public TerracottaServer relayHostName(String relayHostName) {
+    this.relayHostName = relayHostName;
+    return this;
+  }
+
+  public TerracottaServer relayPort(int relayPort) {
+    this.relayPort = relayPort;
+    return this;
+  }
+
+  public TerracottaServer relayGroupPort(int relayGroupPort) {
+    this.relayGroupPort = relayGroupPort;
+    return this;
+  }
+
   public String getClusterName() {
     return clusterName;
   }
@@ -319,6 +361,46 @@ public class TerracottaServer implements Serializable {
     return whitelist;
   }
 
+  public boolean isRelay() {
+    return relay;
+  }
+
+  public String getReplicaHostName() {
+    return replicaHostName;
+  }
+
+  public int getReplicaPort() {
+    return replicaPort;
+  }
+
+  public boolean isReplica() {
+    return replica;
+  }
+
+  public String getRelayHostName() {
+    return relayHostName;
+  }
+
+  public int getRelayPort() {
+    return relayPort;
+  }
+
+  public int getRelayGroupPort() {
+    return relayGroupPort;
+  }
+
+  public String getRelayPeer() {
+    return new HostPort(replicaHostName, replicaPort).getHostPort();
+  }
+
+  public String getReplicaPeer() {
+    return new HostPort(relayHostName, relayPort).getHostPort();
+  }
+
+  public String getReplicaGroupPeer() {
+    return new HostPort(relayHostName, relayGroupPort).getHostPort();
+  }
+
   @Override
   public String toString() {
     return "TerracottaServer{" +
@@ -339,6 +421,11 @@ public class TerracottaServer implements Serializable {
         proxyPort == that.proxyPort &&
         sslTls == that.sslTls &&
         whitelist == that.whitelist &&
+        relay == that.relay &&
+        replicaPort == that.replicaPort &&
+        replica == that.replica &&
+        relayPort == that.relayPort &&
+        relayGroupPort == that.relayGroupPort &&
         serverSymbolicName.equals(that.serverSymbolicName) &&
         hostName.equals(that.hostName) &&
         Objects.equals(id, that.id) &&
@@ -357,13 +444,16 @@ public class TerracottaServer implements Serializable {
         Objects.equals(clientReconnectWindow, that.clientReconnectWindow) &&
         Objects.equals(auditLogDir, that.auditLogDir) &&
         Objects.equals(securityDir, that.securityDir) &&
-        Objects.equals(authc, that.authc);
+        Objects.equals(authc, that.authc) &&
+        Objects.equals(relayHostName, that.relayHostName) &&
+        Objects.equals(replicaHostName, that.replicaHostName);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(serverSymbolicName, hostName, id, tsaPort, tsaGroupPort, managementPort, jmxPort, proxyPort,
         bindAddress, groupBindAddress, configRepo, configFile, logs, metaData, dataDir, offheap, failoverPriority,
-        clientLeaseDuration, properties, backupDir, clientReconnectWindow, auditLogDir, securityDir, authc, sslTls, whitelist);
+        clientLeaseDuration, properties, backupDir, clientReconnectWindow, auditLogDir, securityDir, authc, sslTls, whitelist,
+        relay, replicaHostName, replicaPort, replica, relayHostName, relayPort, relayGroupPort);
   }
 }
