@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright Terracotta, Inc.
+  Copyright IBM Corp. 2024, 2025
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.terracotta</groupId>
+    <artifactId>angela-root</artifactId>
+    <version>3.3.49-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>angela-groupport-mapper</artifactId>
+
+  <name>angela :: groupport-mapper</name>
+  <description>
+    Per-pair GroupPortMapper Angela installs into the dynamic-config server kit
+    so that net-disruption can route each (thisNode, peerNode) outbound group
+    connection to its own NetCrusher proxy. The kit's ServiceLoader scan picks
+    this class up from server/plugins/lib/angela-groupport-mapper.jar.
+  </description>
+
+  <properties>
+    <!-- jar must run on whatever JDK the kit's tc-server requires, currently 1.8 -->
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.release>8</maven.compiler.release>
+  </properties>
+
+  <dependencies>
+    <!-- slf4j-api is shipped inside the kit's server/lib at runtime -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>angela-groupport-mapper</finalName>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <!--
+            Stub copies of the dynamic-config API types live under
+            src/main/java/org/terracotta/dynamic_config so AngelaGroupPortMapper
+            can compile without depending on the (unpublished) kit jars.
+            They MUST NOT ship in the produced jar: the kit provides the
+            real classes at runtime, and shipping our stubs would shadow them.
+          -->
+          <excludes>
+            <exclude>org/terracotta/dynamic_config/**</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

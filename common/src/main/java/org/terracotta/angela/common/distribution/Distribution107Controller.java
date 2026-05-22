@@ -77,6 +77,8 @@ import static org.terracotta.angela.common.AngelaProperties.VOTER_FULL_LOGGING;
 
 public class Distribution107Controller extends DistributionController {
   private final static Logger LOGGER = LoggerFactory.getLogger(Distribution107Controller.class);
+  private static final String JAVA_OPTS = "JAVA_OPTS";
+  private static final String L2_PROXY_TO_PORT_PROPERTY = "com.tc.l2.nha.tcgroupcomm.l2proxytoport";
   private static final byte[] LF = "\n".getBytes(StandardCharsets.UTF_8);
   private final boolean tsaFullLogging = TSA_FULL_LOGGING.getBooleanValue();
   private final boolean tmsFullLogging = TMS_FULL_LOGGING.getBooleanValue();
@@ -92,6 +94,7 @@ public class Distribution107Controller extends DistributionController {
                                           TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides,
                                           List<String> startUpArgs, Duration inactivityKillerDelay) {
     Map<String, String> env = tcEnv.buildEnv(envOverrides);
+    configureServerToServerProxyPort(env, terracottaServer, proxiedPorts);
     AtomicReference<TerracottaServerState> stateRef = new AtomicReference<>(TerracottaServerState.STOPPED);
     AtomicInteger javaPid = new AtomicInteger(-1);
 
@@ -228,6 +231,15 @@ public class Distribution107Controller extends DistributionController {
     });
 
     return handle;
+  }
+
+  void configureServerToServerProxyPort(Map<String, String> env, TerracottaServer terracottaServer, Map<ServerSymbolicName, Integer> proxiedPorts) {
+    Integer serverGroupPort = proxiedPorts.get(terracottaServer.getServerSymbolicName());
+    if (serverGroupPort != null) {
+      String option = "-D" + L2_PROXY_TO_PORT_PROPERTY + "=" + serverGroupPort;
+      String javaOpts = env.get(JAVA_OPTS);
+      env.put(JAVA_OPTS, javaOpts == null || javaOpts.trim().isEmpty() ? option : javaOpts + " " + option);
+    }
   }
 
   @Override
