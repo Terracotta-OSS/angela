@@ -158,6 +158,42 @@ public class DisruptionController implements AutoCloseable {
   }
 
   /**
+   * Create a cross-cluster disruptor that controls the network links between source servers
+   * in this topology and their peers in a remote topology.
+   * If no servers are specified, all source servers e.g. replica's in the topology are used automatically.
+   * Each source server must be configured for cross-cluster connection (e.g., a replica that connects to a relay).
+   * The peer information is derived from each source server's configuration.
+   * @param sourceServers The servers in this topology that initiate cross-cluster connections to its peers.
+   *                      If empty, all source e.g. replica servers in the topology are used.
+   * @return {@link CrossClusterServerToServerDisruptor}
+   */
+  public CrossClusterServerToServerDisruptor newCrossClusterServerToServerDisruptor(TerracottaServer... sourceServers) {
+    if (!topology.isNetDisruptionEnabled()) {
+      throw new IllegalArgumentException("Topology not enabled for network disruption");
+    }
+    if (closed) {
+      throw new IllegalStateException("already closed");
+    }
+    // If no servers specified, it will discover all the replica's in the topology and disrupt all with its peers.
+    if (sourceServers.length == 0) {
+      sourceServers = topology.getServers().stream()
+          .filter(TerracottaServer::isReplica)
+          .toArray(TerracottaServer[]::new);
+      if (sourceServers.length == 0) {
+        throw new IllegalArgumentException("No replica servers found in the topology");
+      }
+    }
+    for (TerracottaServer sourceServer : sourceServers) {
+      if (!sourceServer.isReplica() || sourceServer.getRelayGroupPort() <= 0) {
+        throw new IllegalArgumentException("Server " + sourceServer.getServerSymbolicName() + " is not configured for cross-cluster connection");
+      }
+    }
+    CrossClusterServerToServerDisruptor disruption = new CrossClusterServerToServerDisruptor(executor, instanceId, sourceServers);
+    existingDisruptors.add(disruption);
+    return disruption;
+  }
+
+  /**
    * Create client to server disruptor for controlling traffic between
    * client like DatasetManager &amp; CacheManager and servers. This needs to
    * be created before initializing DatasetManager or CacheManager and use

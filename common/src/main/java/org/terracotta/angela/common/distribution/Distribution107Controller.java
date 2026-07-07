@@ -799,10 +799,15 @@ public class Distribution107Controller extends DistributionController {
     addOptionIfNotZero(options, ServerOption.REPLICA_PORT.getOption(), server.getReplicaPort());
 
     addOptionIfTrue(options, ServerOption.REPLICA.getOption(), server.isReplica());
-    addOptionIfNotNull(options, ServerOption.RELAY_HOSTNAME.getOption(), server.getRelayHostName());
+    String hostName = server.getRelayHostName();
+    int groupPort = server.getRelayGroupPort();
+    if (server.isReplica() && server.getRelayProxyGroupPort() > 0) {
+      hostName = server.getHostName();
+      groupPort = server.getRelayProxyGroupPort();
+    }
+    addOptionIfNotNull(options, ServerOption.RELAY_HOSTNAME.getOption(), hostName);
     addOptionIfNotZero(options, ServerOption.RELAY_PORT.getOption(), server.getRelayPort());
-    addOptionIfNotZero(options, ServerOption.RELAY_GROUP_PORT.getOption(), server.getRelayGroupPort());
-
+    addOptionIfNotZero(options, ServerOption.RELAY_GROUP_PORT.getOption(), groupPort);
     return options;
   }
 

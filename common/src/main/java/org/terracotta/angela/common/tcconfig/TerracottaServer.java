@@ -72,6 +72,7 @@ public class TerracottaServer implements Serializable {
   private volatile String relayHostName;
   private volatile int relayPort;
   private volatile int relayGroupPort;
+  private volatile int relayProxyGroupPort;
 
   private TerracottaServer(String serverSymbolicName, String hostName) {
     this.serverSymbolicName = new ServerSymbolicName(serverSymbolicName);
@@ -247,6 +248,11 @@ public class TerracottaServer implements Serializable {
     return this;
   }
 
+  public TerracottaServer relayProxyGroupPort(int relayProxyGroupPort) {
+    this.relayProxyGroupPort = relayProxyGroupPort;
+    return this;
+  }
+
   public String getClusterName() {
     return clusterName;
   }
@@ -399,6 +405,10 @@ public class TerracottaServer implements Serializable {
     return relayGroupPort;
   }
 
+  public int getRelayProxyGroupPort() {
+    return relayProxyGroupPort;
+  }
+
   public String getRelayPeer() {
     return new HostPort(replicaHostName, replicaPort).getHostPort();
   }
@@ -408,7 +418,8 @@ public class TerracottaServer implements Serializable {
   }
 
   public String getReplicaGroupPeer() {
-    return new HostPort(relayHostName, relayGroupPort).getHostPort();
+    return new HostPort((relayProxyGroupPort > 0) ? replicaHostName : relayHostName,
+        (relayProxyGroupPort > 0) ? relayProxyGroupPort : relayGroupPort).getHostPort();
   }
 
   @Override
@@ -436,6 +447,7 @@ public class TerracottaServer implements Serializable {
         replica == that.replica &&
         relayPort == that.relayPort &&
         relayGroupPort == that.relayGroupPort &&
+        relayProxyGroupPort == that.relayProxyGroupPort &&
         serverSymbolicName.equals(that.serverSymbolicName) &&
         hostName.equals(that.hostName) &&
         Objects.equals(id, that.id) &&
@@ -465,6 +477,6 @@ public class TerracottaServer implements Serializable {
     return Objects.hash(serverSymbolicName, hostName, id, tsaPort, tsaGroupPort, managementPort, jmxPort, proxyPort,
         bindAddress, groupBindAddress, configRepo, configFile, logs, metaData, dataDir, offheap, failoverPriority,
         clientLeaseDuration, properties, backupDir, clientReconnectWindow, auditLogDir, securityDir, securityLogDir, authc, sslTls, whitelist,
-        relay, replicaHostName, replicaPort, replica, relayHostName, relayPort, relayGroupPort);
+        relay, replicaHostName, replicaPort, replica, relayHostName, relayPort, relayGroupPort, relayProxyGroupPort);
   }
 }

@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import static org.terracotta.angela.common.DisruptionConstants.CROSS_CLUSTER_KEY_PREFIX;
+
 public class DynamicConfigManager implements ConfigurationManager, Serializable {
   private static final long serialVersionUID = 1L;
 
@@ -196,6 +198,18 @@ public class DynamicConfigManager implements ConfigurationManager, Serializable 
         disruptionLinks.put(server.getServerSymbolicName(), disruptionProvider.createLink(src, dest));
         proxiedPorts.put(server.getServerSymbolicName(), src.getPort());
       }
+    }
+
+    if (terracottaServer.isReplica() && terracottaServer.getRelayGroupPort() > 0) {
+      int relayProxyGroupPort = portAllocator.reserve(1).next();
+      terracottaServer.relayProxyGroupPort(relayProxyGroupPort);
+      // source connects to sourceHost:proxyPort forwards to peerHost:peerGroupPort
+      final InetSocketAddress proxyAddress = new InetSocketAddress(terracottaServer.getHostName(), relayProxyGroupPort);
+      final InetSocketAddress relayAddress = new InetSocketAddress(terracottaServer.getRelayHostName(), terracottaServer.getRelayGroupPort());
+      Disruptor crossClusterLink = disruptionProvider.createLink(proxyAddress, relayAddress);
+      ServerSymbolicName crossClusterKey = new ServerSymbolicName(CROSS_CLUSTER_KEY_PREFIX + terracottaServer.getServerSymbolicName().getSymbolicName());
+      disruptionLinks.put(crossClusterKey, crossClusterLink);
+      proxiedPorts.put(crossClusterKey, relayProxyGroupPort);
     }
   }
 }
