@@ -29,7 +29,9 @@ import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -86,6 +88,23 @@ public class Distribution107ControllerTest {
     assertThat(tsaCommand.get(3), is(equalTo("-s")));
     assertThat(tsaCommand.get(4), is(equalTo("localhost")));
     assertThat(tsaCommand.size(), is(5));
+  }
+
+  @Test
+  public void testConfigureServerToServerProxyPortAddsSupportedJvmProperty() {
+    Distribution distribution = mock(Distribution.class);
+    when(distribution.getPackageType()).thenReturn(PackageType.KIT);
+    Distribution107Controller controller = new Distribution107Controller(distribution);
+
+    TerracottaServer terracottaServer = TerracottaServer.server("server-1", "localhost");
+    Map<String, String> env = new HashMap<>();
+    env.put("JAVA_OPTS", "-Xmx512m");
+    Map<ServerSymbolicName, Integer> proxiedPorts = new HashMap<>();
+    proxiedPorts.put(terracottaServer.getServerSymbolicName(), 9610);
+
+    controller.configureServerToServerProxyPort(env, terracottaServer, proxiedPorts);
+
+    assertThat(env.get("JAVA_OPTS"), is("-Xmx512m -Dcom.tc.l2.nha.tcgroupcomm.l2proxytoport=9610"));
   }
 
   @Test

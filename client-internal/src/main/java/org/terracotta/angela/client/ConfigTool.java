@@ -375,13 +375,6 @@ public class ConfigTool implements AutoCloseable {
       }
     }
 
-    if (topology.isNetDisruptionEnabled()) {
-      for (int i = 1; i <= stripes.size(); ++i) {
-        if (stripes.get(i - 1).size() > 1) {
-          setServerToServerDisruptionLinks(i, stripes.get(i - 1).size());
-        }
-      }
-    }
     return this;
   }
 
@@ -486,35 +479,6 @@ public class ConfigTool implements AutoCloseable {
   }
 
   public ConfigTool setServerToServerDisruptionLinks(int stripeId, int size) {
-    List<TerracottaServer> stripeServerList = tsa.getTsaConfigurationContext()
-            .getTopology()
-            .getStripes()
-            .get(stripeId - 1);
-    for (int j = 0; j < size; ++j) {
-      TerracottaServer server = stripeServerList.get(j);
-      Map<ServerSymbolicName, Integer> proxyGroupPortMapping = tsa.getProxyGroupPortsForServer(server);
-      int nodeId = j + 1;
-      StringBuilder propertyBuilder = new StringBuilder();
-      propertyBuilder.append("stripe.")
-              .append(stripeId)
-              .append(".node.")
-              .append(nodeId)
-              .append(".tc-properties.test-proxy-group-port=");
-      propertyBuilder.append("\"");
-      for (Map.Entry<ServerSymbolicName, Integer> entry : proxyGroupPortMapping.entrySet()) {
-        propertyBuilder.append(entry.getKey().getSymbolicName());
-        propertyBuilder.append("->");
-        propertyBuilder.append(entry.getValue());
-        propertyBuilder.append("#");
-      }
-      propertyBuilder.deleteCharAt(propertyBuilder.lastIndexOf("#"));
-      propertyBuilder.append("\"");
-
-      ToolExecutionResult executionResult = executeCommand("set", "-s", server.getHostPort(), "-c", propertyBuilder.toString());
-      if (executionResult.getExitStatus() != 0) {
-        throw new RuntimeException("ConfigTool::executeCommand with command parameters failed with: " + executionResult);
-      }
-    }
     return this;
   }
 

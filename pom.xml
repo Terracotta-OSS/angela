@@ -73,6 +73,7 @@
 
   <modules>
     <module>common</module>
+    <module>groupport-mapper</module>
     <module>client-internal</module>
     <module>agent-lib</module>
     <module>agent</module>
@@ -96,6 +97,11 @@
       <dependency>
         <groupId>org.terracotta</groupId>
         <artifactId>angela-agent-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.terracotta</groupId>
+        <artifactId>angela-groupport-mapper</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
