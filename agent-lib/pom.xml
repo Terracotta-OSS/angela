@@ -59,7 +59,20 @@
     <dependency>
       <groupId>io.github.aurbroszniowski.baton</groupId>
       <artifactId>baton-core</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.3</version>
+    </dependency>
+
+    <!--
+      Bundled as a classpath resource (not a transitive Java dependency)
+      via maven-dependency-plugin below. AgentController extracts the jar
+      to <kit>/server/plugins/lib at install time so the dynamic-config
+      server's ServiceLoader picks up AngelaGroupPortMapper.
+    -->
+    <dependency>
+      <groupId>org.terracotta</groupId>
+      <artifactId>angela-groupport-mapper</artifactId>
+      <scope>runtime</scope>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -78,5 +91,42 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <!--
+        Copy the groupport-mapper jar (built by the sibling module) into
+        target/classes so it ships inside angela-agent-lib.jar at a known
+        classpath path. AgentController.installGroupPortMapperIntoKit reads
+        it from there via getResourceAsStream.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>bundle-groupport-mapper</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.terracotta</groupId>
+                  <artifactId>angela-groupport-mapper</artifactId>
+                  <version>${project.version}</version>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.outputDirectory}/org/terracotta/angela/agent/groupport</outputDirectory>
+                  <destFileName>angela-groupport-mapper.jar</destFileName>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

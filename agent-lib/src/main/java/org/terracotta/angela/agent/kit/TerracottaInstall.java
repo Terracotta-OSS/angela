@@ -24,6 +24,9 @@ import org.terracotta.angela.common.tcconfig.TerracottaServer;
 import org.terracotta.angela.common.topology.Topology;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -85,6 +88,18 @@ public class TerracottaInstall {
   public int terracottaServerInstanceCount() {
     synchronized (terracottaServerInstances) {
       return terracottaServerInstances.size();
+    }
+  }
+
+  /**
+   * Snapshot of every server instance currently installed on this agent. Used
+   * to aggregate the per-(thisServer, peerServer) group-port table when
+   * starting a server, since each instance's createDisruptionLinks records
+   * only its own inbound proxy ports.
+   */
+  public Collection<TerracottaServerInstance> getAllTerracottaServerInstances() {
+    synchronized (terracottaServerInstances) {
+      return Collections.unmodifiableCollection(new ArrayList<>(terracottaServerInstances.values()));
     }
   }
 

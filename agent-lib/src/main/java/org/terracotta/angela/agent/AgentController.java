@@ -60,6 +60,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,6 +122,7 @@ public class AgentController {
 
         logger.debug("[{}] Installing kit for {} from {}", localAgentID, terracottaServer, distribution);
         kitLocation = kitManager.installKit(license, topology.getServersHostnames());
+        installGroupPortMapperIntoKit(kitLocation);
         terracottaInstall = tsaInstalls.computeIfAbsent(instanceId, (iid) -> new TerracottaInstall(portAllocator));
       } else {
         // DO NOT ALTER THE KIT CONTENT IF kitInstallationPath IS USED
@@ -452,9 +454,114 @@ public class AgentController {
   }
 
   public void createTsa(InstanceId instanceId, TerracottaServer terracottaServer, TerracottaCommandLineEnvironment tcEnv, Map<String, String> envOverrides, List<String> startUpArgs, Duration inactivityKillerDelay) {
-    TerracottaServerInstance serverInstance = tsaInstalls.get(instanceId).getTerracottaServerInstance(terracottaServer);
-    serverInstance.create(tcEnv, envOverrides, startUpArgs, inactivityKillerDelay);
+    TerracottaInstall install = tsaInstalls.get(instanceId);
+    TerracottaServerInstance serverInstance = install.getTerracottaServerInstance(terracottaServer);
+    Map<String, String> envOverridesWithGroupPorts = withAngelaGroupPortMapping(envOverrides, install, terracottaServer);
+    serverInstance.create(tcEnv, envOverridesWithGroupPorts, startUpArgs, inactivityKillerDelay);
   }
+
+  /**
+   * Build the per-server slice of the per-(thisServer, peerServer) proxy
+   * group-port table and pass it to the server JVM via
+   * {@code -Dangela.dynamicConfig.peerGroupPorts=...}. Each peer instance
+   * recorded, in {@code createDisruptionLinks}, the port a given peer must
+   * dial to reach that instance (key = dialer, value = proxy listen port on
+   * peer's host). To build {@code terracottaServer}'s mapper table we iterate
+   * peer instances and read each peer's entry under {@code terracottaServer}'s
+   * symbolic name.
+   */
+  private static Map<String, String> withAngelaGroupPortMapping(Map<String, String> envOverrides, TerracottaInstall install, TerracottaServer terracottaServer) {
+    if (install == null) {
+      return envOverrides;
+    }
+    ServerSymbolicName self = terracottaServer.getServerSymbolicName();
+    StringBuilder spec = new StringBuilder();
+    for (TerracottaServerInstance peerInstance : install.getAllTerracottaServerInstances()) {
+      TerracottaServer peer = peerInstance.getTerracottaServer();
+      if (peer.getServerSymbolicName().equals(self)) {
+        continue;
+      }
+      Integer portToDialPeer = peerInstance.getProxiedPorts().get(self);
+      if (portToDialPeer == null) {
+        continue;
+      }
+      if (spec.length() > 0) {
+        spec.append(',');
+      }
+      spec.append(peer.getServerSymbolicName().getSymbolicName()).append('=').append(portToDialPeer);
+    }
+    if (spec.length() == 0) {
+      return envOverrides;
+    }
+    Map<String, String> updated = new HashMap<>();
+    if (envOverrides != null) {
+      updated.putAll(envOverrides);
+    }
+    String existing = updated.get("JAVA_OPTS");
+    String option = "-Dangela.dynamicConfig.peerGroupPorts=" + spec;
+    updated.put("JAVA_OPTS", existing == null || existing.trim().isEmpty() ? option : existing + " " + option);
+    return updated;
+  }
+
+  /**
+   * Drops the AngelaGroupPortMapper jar into the kit's server/plugins/lib so
+   * the dynamic-config server picks it up via ServiceLoader and per-pair
+   * outbound dial routing works for net-disrupted topologies.
+   *
+   * Source: the jar is bundled inside angela-agent-lib.jar at
+   * {@value #GROUPPORT_MAPPER_RESOURCE} (placed there by agent-lib's
+   * maven-dependency-plugin copy of the sibling angela-groupport-mapper
+   * artifact). A {@code -D}{@value #GROUPPORT_MAPPER_JAR_PROPERTY}{@code =path}
+   * system property overrides the classpath resource - useful for local dev
+   * when iterating on the mapper jar without rebuilding agent-lib.
+   *
+   * Skipped entirely when the kit was supplied via {@code kitInstallationPath}
+   * (the caller must not mutate that kit).
+   */
+  private void installGroupPortMapperIntoKit(File kitLocation) {
+    File pluginsLib = new File(kitLocation, "server" + File.separator + "plugins" + File.separator + "lib");
+    if (!pluginsLib.isDirectory()) {
+      logger.debug("[{}] Kit at {} has no server/plugins/lib; skipping AngelaGroupPortMapper install.",
+          localAgentID, kitLocation);
+      return;
+    }
+    File target = new File(pluginsLib, "angela-groupport-mapper.jar");
+
+    String override = System.getProperty(GROUPPORT_MAPPER_JAR_PROPERTY);
+    if (override != null && !override.isEmpty()) {
+      File jar = new File(override);
+      if (!jar.isFile()) {
+        logger.warn("[{}] -D{}={} does not point at a readable file; skipping AngelaGroupPortMapper install.",
+            localAgentID, GROUPPORT_MAPPER_JAR_PROPERTY, override);
+        return;
+      }
+      try {
+        Files.copy(jar.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        logger.info("[{}] Installed AngelaGroupPortMapper from -D{} into {}",
+            localAgentID, GROUPPORT_MAPPER_JAR_PROPERTY, target);
+      } catch (IOException e) {
+        throw new UncheckedIOException("Failed to copy " + jar + " to " + target, e);
+      }
+      return;
+    }
+
+    try (InputStream in = AgentController.class.getResourceAsStream(GROUPPORT_MAPPER_RESOURCE)) {
+      if (in == null) {
+        logger.warn("[{}] Classpath resource {} not found; AngelaGroupPortMapper will not be installed and "
+                + "net disruption on dynamic-config clusters will be inert. Rebuild angela-agent-lib so the "
+                + "sibling angela-groupport-mapper jar gets bundled, or set -D{} to a built jar.",
+            localAgentID, GROUPPORT_MAPPER_RESOURCE, GROUPPORT_MAPPER_JAR_PROPERTY);
+        return;
+      }
+      Files.copy(in, target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      logger.info("[{}] Installed AngelaGroupPortMapper into {}", localAgentID, target);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to extract " + GROUPPORT_MAPPER_RESOURCE + " to " + target, e);
+    }
+  }
+
+  public static final String GROUPPORT_MAPPER_JAR_PROPERTY = "angela.groupPortMapperJar";
+  private static final String GROUPPORT_MAPPER_RESOURCE = "/org/terracotta/angela/agent/groupport/angela-groupport-mapper.jar";
 
   public void stopTsa(InstanceId instanceId, TerracottaServer terracottaServer) {
     TerracottaInstall terracottaInstall = tsaInstalls.get(instanceId);

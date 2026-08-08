@@ -182,6 +182,25 @@ public class DynamicConfigManager implements ConfigurationManager, Serializable 
     ).filter(port -> port <= 0).count();
   }
 
+  /**
+   * Per-pair NetCrusher proxies. For server S, allocate one proxy per peer X
+   * (X != S), all forwarding to S's real group port. Each proxy is the inbound
+   * path X dials to reach S. The server-side dial port is supplied by the
+   * {@code org.terracotta.angela.groupport.AngelaGroupPortMapper} shipped in
+   * {@code <kit>/server/plugins/lib/}, fed by the per-server slice of this
+   * table that {@code AgentController.createTsa} stitches together and passes
+   * via {@code -Dangela.dynamicConfig.peerGroupPorts=...} to the server JVM.
+   *
+   * The mutation of the server's own {@code tsaGroupPort} that the previous
+   * one-proxy-per-server model relied on is gone - the server binds its real
+   * configured group port and {@code l2proxytoport} is therefore unnecessary
+   * here (no entry under the self symbolic name; {@code Distribution107Controller
+   * .configureServerToServerProxyPort} naturally no-ops).
+   *
+   * {@code proxiedPorts} semantics in this manager: key = the peer that will
+   * dial this server, value = the proxy listen port on this server's host.
+   * Same shape as {@link TcConfigManager} uses.
+   */
   @Override
   public void createDisruptionLinks(TerracottaServer terracottaServer,
                                     DisruptionProvider disruptionProvider,
@@ -190,14 +209,22 @@ public class DynamicConfigManager implements ConfigurationManager, Serializable 
                                     PortAllocator portAllocator) {
     int stripeIndex = getStripeIndexOf(terracottaServer.getId());
     List<TerracottaServer> allServersInStripe = stripes.get(stripeIndex).getServers();
-    for (TerracottaServer server : allServersInStripe) {
-      if (!server.getServerSymbolicName().equals(terracottaServer.getServerSymbolicName())) {
-        int tsaRandomGroupPort = portAllocator.reserve(1).next();
-        final InetSocketAddress src = new InetSocketAddress(terracottaServer.getHostName(), tsaRandomGroupPort);
-        final InetSocketAddress dest = new InetSocketAddress(server.getHostName(), server.getTsaGroupPort());
-        disruptionLinks.put(server.getServerSymbolicName(), disruptionProvider.createLink(src, dest));
-        proxiedPorts.put(server.getServerSymbolicName(), src.getPort());
+    if (allServersInStripe.size() < 2) {
+      return;
+    }
+
+    int realGroupPort = terracottaServer.getTsaGroupPort();
+    InetSocketAddress dest = new InetSocketAddress(terracottaServer.getHostName(), realGroupPort);
+
+    for (TerracottaServer peer : allServersInStripe) {
+      if (peer.getServerSymbolicName().equals(terracottaServer.getServerSymbolicName())) {
+        continue;
       }
+      int proxyPort = portAllocator.reserve(1).next();
+      InetSocketAddress src = new InetSocketAddress(terracottaServer.getHostName(), proxyPort);
+      Disruptor link = disruptionProvider.createLink(src, dest);
+      disruptionLinks.put(peer.getServerSymbolicName(), link);
+      proxiedPorts.put(peer.getServerSymbolicName(), proxyPort);
     }
 
     if (terracottaServer.isReplica() && terracottaServer.getRelayGroupPort() > 0) {

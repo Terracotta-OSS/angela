@@ -34,6 +34,7 @@ import java.io.File;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -85,6 +86,10 @@ public class TerracottaServerInstance implements Closeable {
     return proxiedPorts;
   }
 
+  public TerracottaServer getTerracottaServer() {
+    return terracottaServer;
+  }
+
   public Distribution getDistribution() {
     return distribution;
   }
@@ -105,8 +110,12 @@ public class TerracottaServerInstance implements Closeable {
     if (!netDisruptionEnabled) {
       throw new IllegalArgumentException("Topology not enabled for network disruption");
     }
+    Set<Disruptor> disruptedLinks = new HashSet<>();
     for (TerracottaServer server : targets) {
-      disruptionLinks.get(server.getServerSymbolicName()).disrupt();
+      Disruptor disruptor = disruptionLinks.get(server.getServerSymbolicName());
+      if (disruptor != null && disruptedLinks.add(disruptor)) {
+        disruptor.disrupt();
+      }
     }
   }
 
@@ -114,8 +123,12 @@ public class TerracottaServerInstance implements Closeable {
     if (!netDisruptionEnabled) {
       throw new IllegalArgumentException("Topology not enabled for network disruption");
     }
+    Set<Disruptor> undisruptedLinks = new HashSet<>();
     for (TerracottaServer target : targets) {
-      disruptionLinks.get(target.getServerSymbolicName()).undisrupt();
+      Disruptor disruptor = disruptionLinks.get(target.getServerSymbolicName());
+      if (disruptor != null && undisruptedLinks.add(disruptor)) {
+        disruptor.undisrupt();
+      }
     }
   }
 
