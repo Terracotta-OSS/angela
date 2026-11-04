@@ -217,7 +217,9 @@ public class Client implements Closeable {
     final InstanceId localInstanceId = instanceId;
     try {
       executor.execute(parentAgentID, (RemoteRunnable) () -> AgentController.getInstance().stopClient(localInstanceId, pid));
-      executor.getGroup().getAllAgents().remove(clientAgentID);   // Dead agent -- remove
+      if (!clientAgentID.isLocal()) {
+        executor.getGroup().getAllAgents().remove(clientAgentID);   // Dead agent -- remove
+      }
     } catch (Throwable e) {
       logger.error("Error killing agent {} for client {}", clientAgentID, clientId, e);
       throw e;

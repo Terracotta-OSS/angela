@@ -150,6 +150,10 @@ public class BrowseIT extends BaseIT {
       List<RemoteFile> remoteFiles = ((RemoteFolder) createdFolder.get()).list();
       Optional<RemoteFile> remoteFileOpt = remoteFiles.stream().filter(remoteFile -> remoteFile.getName().equals("keep-this-file-empty.txt")).findAny();
       assertThat(remoteFileOpt.isPresent(), is(true));
+
+      // Close explicitly so cleanup errors fail the test instead of being logged by ClusterFactory.close().
+      localhost.close();
+      assertThat(executor.getGroup().contains(executor.getAgentID(hostname)), is(true));
     }
   }
 }
