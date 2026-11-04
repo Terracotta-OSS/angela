@@ -57,7 +57,7 @@
     <slf4j-api.range.version>[${slf4j-api.base.version},1.7.9999)</slf4j-api.range.version>
     <sshj.version>0.32.0</sshj.version>
     <awaitility.version>4.0.3</awaitility.version>
-    <commons-io.version>2.7</commons-io.version>
+    <commons-io.version>2.14.0</commons-io.version>
     <commons-compress.version>1.20</commons-compress.version>
     <zt-process-killer.version>1.10</zt-process-killer.version>
     <zt-exec.version>1.12</zt-exec.version>
